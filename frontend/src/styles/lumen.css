@@ -1,4 +1,4 @@
-/* Hallmark · macrostructure: Marquee Hero (landing, auth) + reading page (docs) · tone: atmospheric · anchor hue: 50 (molten brass) · theme: Lumen · drop: 01 Night Foundry + 02 Daylight Foundry (light register) · nav: N5 floating pill (backdrop: solid), + colour-mode toggle · footer: Ft5 statement · pre-emit critique: P5 H4 E4 S4 R4 V4 · contrast: pass-static both registers (40-41) · honest: pass (46) · chrome: pass (47) · tokens: pass (48) · nav: N5 (42) · footer: Ft5 (43) · fold: arithmetic-only — landing hero carries the primary CTA (44b) and clears the fixed pill by padding, 1.78x end/start (44a); docs hero 96/72 = 1.33x (44a); never rendered · slop: pass-static (10-19, 26-27) · mobile: pass-static, not rendered (34, 49, 50-57) · docs: agent-first — prose inherits Lumen by descendant selector, no utility classes in the markdown map */
+/* Hallmark · macrostructure: Marquee Hero (landing, auth) + reading page (docs) + Component Playground (/try, added 2026-09-30) · tone: atmospheric · anchor hue: 50 (molten brass) · theme: Lumen · drop: 01 Night Foundry + 02 Daylight Foundry (light register) · nav: N5 floating pill (backdrop: solid), + colour-mode toggle · footer: Ft5 statement · pre-emit critique: P5 H4 E5 S5 R4 V4 (whole system) · /try + docs surfaces: P5 H4 E5 S5 R4 V4 · contrast: pass-static both registers (40-41) · honest: pass (46) · chrome: pass (47) · tokens: pass (48) · nav: N5 (42) · footer: Ft5 (43) · fold: arithmetic-only — landing hero carries the primary CTA (44b) and clears the fixed pill by padding, 1.78x end/start (44a); docs hero 96/72 = 1.33x (44a); never rendered · slop: pass-static (10-19, 26-27) · mobile: pass-static, not rendered (34, 49, 50-57) · docs: agent-first — prose inherits Lumen by descendant selector, no utility classes in the markdown map */
 
 /*
  * Lumen — landing + auth surfaces.
@@ -1574,4 +1574,630 @@ button.lm-actions__primary {
   .lm-spec:focus-within {
     transform: none;
   }
+}
+
+/* ==========================================================================
+   /try — Component Playground
+   ==========================================================================
+   The interactive surface. Same Lumen tokens, same two registers (lowercase
+   prose, uppercase mono labels). One addition: a "wire" column, which is the
+   request/response pair standing in for the screenshot a hosted product would
+   show. No frame, no terminal chrome — the reader's browser is the chrome.
+   ========================================================================== */
+
+.lm-try {
+  position: relative;
+  z-index: var(--z-raised);
+  max-width: 72rem;
+  margin-inline: auto;
+  padding-inline: var(--space-md);
+  padding-block: var(--space-2xl);
+  display: grid;
+  gap: var(--space-2xl);
+  overflow-wrap: anywhere;
+}
+
+.lm-try__note,
+.lm-try__lede {
+  margin: 0;
+  max-width: 68ch;
+  font-size: var(--text-base);
+  line-height: var(--lh-body);
+  color: var(--color-ink-muted);
+}
+
+.lm-try__note a,
+.lm-try__hint b,
+.lm-try__lede a {
+  color: var(--color-ink);
+  font-weight: 500;
+}
+
+.lm-try__note a {
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  text-decoration-color: var(--color-accent);
+}
+
+/* ---- toolbar ------------------------------------------------------------ */
+
+.lm-try__toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-sm);
+  padding-block: var(--space-xs);
+  border-top: 1px solid var(--rule);
+  border-bottom: 1px solid var(--rule);
+}
+
+.lm-try__meter {
+  font-family: var(--font-label);
+  font-size: var(--text-xs);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--color-ink-faint);
+}
+
+.lm-try__meter b {
+  color: var(--color-ink);
+  font-weight: 600;
+}
+
+.lm-try__reset {
+  margin-inline-start: auto;
+  min-height: 2.75rem;
+  padding-inline: var(--space-sm);
+  font-family: var(--font-label);
+  font-size: var(--text-xs);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--color-ink-muted);
+  background: none;
+  border: 1px solid var(--rule);
+  border-radius: var(--radius-pill);
+  cursor: pointer;
+  transition:
+    color var(--dur-short) var(--ease-out),
+    border-color var(--dur-short) var(--ease-out);
+}
+
+.lm-try__reset:hover {
+  color: var(--color-ink);
+  border-color: var(--rule-strong);
+}
+
+/* ---- band --------------------------------------------------------------- */
+
+.lm-try__band {
+  display: grid;
+  gap: var(--space-lg);
+  padding-top: var(--space-xl);
+  border-top: 1px solid var(--rule);
+}
+
+.lm-try__band-label {
+  margin: 0;
+  font-family: var(--font-label);
+  font-size: var(--text-xs);
+  font-weight: 400;
+  line-height: var(--lh-label);
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--color-accent);
+}
+
+/* ---- split: controls beside the wire ------------------------------------ */
+
+.lm-try__split {
+  display: grid;
+  gap: var(--space-lg);
+  align-items: start;
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.lm-try__panel {
+  display: grid;
+  gap: var(--space-md);
+  padding: var(--space-md);
+  border: 1px solid var(--rule);
+  border-radius: var(--radius-lg);
+  background-color: var(--color-paper-2);
+  min-width: 0;
+}
+
+.lm-try__wire {
+  display: grid;
+  gap: var(--space-2xs);
+  min-width: 0;
+}
+
+.lm-try__wire-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-xs);
+  min-height: 2.75rem;
+}
+
+.lm-try__wire-label {
+  font-family: var(--font-label);
+  font-size: var(--text-xs);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--color-ink-faint);
+}
+
+.lm-try__code {
+  min-height: 8rem;
+  font-size: var(--text-xs);
+}
+
+.lm-try__status {
+  font-family: var(--font-label);
+  font-size: var(--text-xs);
+  letter-spacing: 0.06em;
+  color: var(--color-ink-faint);
+}
+
+.lm-try__status[data-state='ok'] {
+  color: var(--color-accent);
+}
+
+.lm-try__status[data-state='error'] {
+  color: var(--color-danger);
+}
+
+.lm-try__status-retry {
+  color: var(--color-ink-faint);
+}
+
+/* ---- fields ------------------------------------------------------------- */
+
+.lm-try__field {
+  display: grid;
+  gap: var(--space-2xs);
+  min-width: 0;
+}
+
+.lm-try__field-label {
+  font-family: var(--font-label);
+  font-size: var(--text-xs);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--color-ink-muted);
+}
+
+.lm-try__opt {
+  color: var(--color-ink-faint);
+  text-transform: none;
+  letter-spacing: 0.04em;
+}
+
+.lm-try__input {
+  min-height: 2.75rem;
+  padding-inline: var(--space-sm);
+  font-family: var(--font-label);
+  font-size: var(--text-base);
+  color: var(--color-ink);
+  background-color: var(--color-paper);
+  border: 1px solid var(--rule);
+  border-radius: var(--radius-md);
+  transition: border-color var(--dur-short) var(--ease-out);
+}
+
+.lm-try__input:hover {
+  border-color: var(--rule-strong);
+}
+
+.lm-try__input::placeholder {
+  color: var(--color-ink-faint);
+}
+
+.lm-try__hint {
+  margin: 0;
+  font-size: var(--text-xs);
+  line-height: var(--lh-body);
+  color: var(--color-ink-faint);
+}
+
+.lm-try__hint b {
+  font-weight: 600;
+}
+
+/* ---- segmented control -------------------------------------------------- */
+
+.lm-try__seg {
+  display: flex;
+  gap: var(--space-3xs);
+  padding: 2px;
+  border: 1px solid var(--rule);
+  border-radius: var(--radius-pill);
+  background-color: var(--color-paper);
+}
+
+.lm-try__seg-btn {
+  flex: 1 1 0;
+  min-width: 0;
+  min-height: 2.75rem;
+  padding-inline: var(--space-sm);
+  font-family: var(--font-label);
+  font-size: var(--text-xs);
+  letter-spacing: 0.08em;
+  color: var(--color-ink-muted);
+  background: none;
+  border: 0;
+  border-radius: var(--radius-pill);
+  cursor: pointer;
+  transition:
+    color var(--dur-short) var(--ease-out),
+    background-color var(--dur-short) var(--ease-out);
+}
+
+.lm-try__seg-btn[aria-pressed='true'] {
+  color: var(--color-accent-ink);
+  background-color: var(--color-accent);
+}
+
+/* ---- checkbox ----------------------------------------------------------- */
+
+.lm-try__check {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-xs);
+  font-size: var(--text-xs);
+  line-height: var(--lh-body);
+  color: var(--color-ink-muted);
+  cursor: pointer;
+}
+
+.lm-try__check input {
+  inline-size: 1.25rem;
+  block-size: 1.25rem;
+  margin: 0;
+  accent-color: var(--color-accent);
+  flex: none;
+}
+
+/* ---- run button --------------------------------------------------------- */
+
+.lm-try__run {
+  min-height: 2.75rem;
+  padding-inline: var(--space-lg);
+  justify-self: start;
+  font-family: var(--font-body);
+  font-size: var(--text-sm);
+  font-weight: 600;
+  color: var(--color-accent-ink);
+  background-color: var(--color-accent);
+  border: 1px solid transparent;
+  border-radius: var(--radius-pill);
+  cursor: pointer;
+  transition:
+    transform var(--dur-short) var(--ease-out),
+    opacity var(--dur-short) var(--ease-out);
+}
+
+.lm-try__run:hover {
+  transform: translateY(-1px);
+}
+
+.lm-try__run:active {
+  transform: none;
+}
+
+/* ---- delivered preview -------------------------------------------------- */
+
+.lm-try__delivered {
+  display: grid;
+  gap: var(--space-2xs);
+  padding: var(--space-sm);
+  border: 1px dashed var(--rule-strong);
+  border-radius: var(--radius-md);
+  background-color: var(--color-paper);
+}
+
+.lm-try__delivered-label {
+  font-family: var(--font-label);
+  font-size: var(--text-xs);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--color-ink-faint);
+}
+
+.lm-try__delivered-body {
+  margin: 0;
+  font-size: var(--text-sm);
+  line-height: var(--lh-body);
+  color: var(--color-ink-muted);
+}
+
+.lm-try__code-inline {
+  font-family: var(--font-label);
+  font-size: var(--text-base);
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  color: var(--color-accent-2);
+}
+
+/* ---- scenario buttons --------------------------------------------------- */
+
+.lm-try__scenarios {
+  display: grid;
+  gap: var(--space-xs);
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.lm-try__scenario {
+  display: grid;
+  gap: 2px;
+  text-align: start;
+  min-height: 2.75rem;
+  padding: var(--space-sm);
+  border: 1px solid var(--rule);
+  border-radius: var(--radius-md);
+  background-color: var(--color-paper-2);
+  cursor: pointer;
+  transition:
+    border-color var(--dur-short) var(--ease-out),
+    background-color var(--dur-short) var(--ease-out);
+}
+
+.lm-try__scenario:hover {
+  border-color: var(--rule-strong);
+  background-color: var(--color-card-emit);
+}
+
+.lm-try__scenario-label {
+  font-size: var(--text-sm);
+  color: var(--color-ink);
+}
+
+.lm-try__scenario-note {
+  font-family: var(--font-label);
+  font-size: var(--text-xs);
+  letter-spacing: 0.06em;
+  color: var(--color-ink-faint);
+}
+
+.lm-try__split--scenario {
+  margin-top: var(--space-md);
+}
+
+/* ---- linking steps ------------------------------------------------------ */
+
+.lm-try__steps {
+  display: grid;
+  gap: var(--space-sm);
+  margin: 0;
+  padding-inline-start: var(--space-md);
+  max-width: 68ch;
+  font-size: var(--text-sm);
+  line-height: var(--lh-body);
+  color: var(--color-ink-muted);
+}
+
+.lm-try__steps li {
+  display: grid;
+  gap: var(--space-3xs);
+}
+
+.lm-try__step-out {
+  font-family: var(--font-label);
+  font-size: var(--text-xs);
+  letter-spacing: 0.06em;
+  color: var(--color-ink-faint);
+}
+
+.lm-try__inline-btn {
+  justify-self: start;
+  min-height: 2.75rem;
+  padding-inline: var(--space-sm);
+  font-family: var(--font-body);
+  font-size: var(--text-sm);
+  color: var(--color-ink);
+  background-color: var(--color-paper-2);
+  border: 1px solid var(--rule-strong);
+  border-radius: var(--radius-pill);
+  cursor: pointer;
+  transition: background-color var(--dur-short) var(--ease-out);
+}
+
+.lm-try__inline-btn:hover:not(:disabled) {
+  background-color: var(--color-card-emit-hover);
+}
+
+.lm-try__inline-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* ---- focus: one ring, everywhere ---------------------------------------- */
+
+.lm-try__input:focus-visible,
+.lm-try__seg-btn:focus-visible,
+.lm-try__run:focus-visible,
+.lm-try__reset:focus-visible,
+.lm-try__scenario:focus-visible,
+.lm-try__inline-btn:focus-visible,
+.lm-try__check input:focus-visible {
+  outline: 2px solid var(--color-focus);
+  outline-offset: 2px;
+}
+
+/* ---- two-up from 56rem -------------------------------------------------- */
+
+@media (min-width: 56rem) {
+  .lm-try__split {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    gap: var(--space-xl);
+  }
+
+  /* Alternating sides: reading the page should feel like scanning examples,
+     not filling in the same form twice. */
+  .lm-try__split--flip .lm-try__panel {
+    order: 2;
+  }
+
+  .lm-try__scenarios {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  }
+}
+
+@media (max-width: 29.999rem) {
+  .lm-try__scenarios {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .lm-try__run,
+  .lm-try__inline-btn {
+    justify-self: stretch;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .lm-try__run,
+  .lm-try__run:hover,
+  .lm-try__run:active,
+  .lm-try__reset,
+  .lm-try__seg-btn,
+  .lm-try__scenario,
+  .lm-try__inline-btn,
+  .lm-try__input {
+    transition: none;
+    transform: none;
+  }
+}
+
+/* ==========================================================================
+   Docs section nav
+   ==========================================================================
+   The rail next to a docs page. Reuses the TOC slot that already existed for
+   the single-page reference, so a multi-page section needs no new layout.
+   ========================================================================== */
+
+.lm-docs__grid--section {
+  max-width: 72rem;
+  margin-inline: auto;
+  padding-inline: var(--space-md);
+  padding-block-end: var(--space-3xl);
+  overflow-wrap: anywhere;
+}
+
+.lm-docsnav__list {
+  display: grid;
+  gap: var(--space-3xs);
+  margin: var(--space-xs) 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.lm-docsnav__link {
+  display: block;
+  min-height: 2.25rem;
+  padding-block: var(--space-3xs);
+  font-size: var(--text-sm);
+  line-height: var(--lh-body);
+  color: var(--color-ink-muted);
+  text-decoration: none;
+  transition: color var(--dur-short) var(--ease-out);
+}
+
+.lm-docsnav__link:hover {
+  color: var(--color-ink);
+}
+
+.lm-docsnav__link[aria-current='page'] {
+  color: var(--color-accent);
+}
+
+/* The current page is carried by weight and the accent, not colour alone. */
+.lm-docsnav__link[aria-current='page']::before {
+  content: '— ';
+  color: var(--color-accent);
+}
+
+.lm-docsnav__foot {
+  margin: var(--space-md) 0 0;
+  padding-top: var(--space-sm);
+  border-top: 1px solid var(--rule);
+}
+
+.lm-docsnav__cta {
+  font-size: var(--text-sm);
+  color: var(--color-accent);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.lm-docsnav__link:focus-visible,
+.lm-docsnav__cta:focus-visible {
+  outline: 2px solid var(--color-focus);
+  outline-offset: 2px;
+}
+
+/* Mobile: the rail is hidden (as the TOC already was), so the section index
+   has to exist somewhere or the pages become a dead end. */
+.lm-docsnav__mobile {
+  display: grid;
+  gap: var(--space-2xs);
+  margin: var(--space-lg) 0 0;
+  padding: var(--space-sm) 0 0;
+  border-top: 1px solid var(--rule);
+  list-style: none;
+}
+
+@media (min-width: 64rem) {
+  .lm-docsnav__mobile {
+    display: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .lm-docsnav__link {
+    transition: none;
+  }
+}
+
+/* ==========================================================================
+   FAQ — definition list
+   ==========================================================================
+   A <dl> rather than a stack of cards: the questions and answers are already
+   discrete, and cards inside a reading column would add a border for nothing.
+   ========================================================================== */
+
+.lm-faq {
+  display: grid;
+  gap: var(--space-lg);
+  margin: var(--space-lg) 0 0;
+}
+
+.lm-faq__item {
+  display: grid;
+  gap: var(--space-2xs);
+  padding-top: var(--space-md);
+  border-top: 1px solid var(--rule);
+}
+
+.lm-faq__item:first-child {
+  padding-top: 0;
+  border-top: 0;
+}
+
+.lm-faq dt {
+  font-family: var(--font-body);
+  font-weight: 500;
+  font-size: var(--text-lg);
+  line-height: var(--lh-tight);
+  color: var(--color-ink);
+  max-width: 68ch;
+}
+
+.lm-faq dd {
+  margin: 0;
+  max-width: 68ch;
+  font-size: var(--text-base);
+  line-height: var(--lh-body);
+  color: var(--color-ink-muted);
 }

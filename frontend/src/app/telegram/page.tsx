@@ -146,8 +146,8 @@ export default function TelegramLandingPage() {
             <Link href='/docs' className='lm-actions__primary'>
               self-host it
             </Link>
-            <Link href='/dashboard/tester' className='lm-actions__ghost'>
-              test in sandbox
+            <Link href='/try' className='lm-actions__ghost'>
+              try it in the browser
             </Link>
             <Link href='/docs' className='lm-actions__ghost'>
               api docs
@@ -329,8 +329,8 @@ export default function TelegramLandingPage() {
             <Link href='/docs' className='lm-actions__primary'>
               self-host it
             </Link>
-            <Link href='/dashboard/tester' className='lm-actions__ghost'>
-              launch otp sandbox
+            <Link href='/try' className='lm-actions__ghost'>
+              try it in the browser
             </Link>
             <Link href='/docs' className='lm-actions__ghost'>
               read documentation

@@ -19,6 +19,12 @@ export async function SiteNav() {
       <Link href='/telegram' className='lm-nav__link lm-nav__link--drop'>
         telegram
       </Link>
+      {/* A link, not a button. The nav deliberately carries no CTA chrome — but
+          this one destination is the whole reason a stranger stays, so it earns
+          a place in the pill. */}
+      <Link href='/try' className='lm-nav__link lm-nav__link--drop'>
+        try
+      </Link>
       <Link href='/docs' className='lm-nav__link lm-nav__link--drop'>
         docs
       </Link>

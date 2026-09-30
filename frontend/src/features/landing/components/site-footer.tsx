@@ -31,11 +31,8 @@ export function SiteFooter() {
               </Link>
             </li>
             <li>
-              <Link
-                href='/dashboard/tester'
-                className='hover:text-[var(--color-accent)] transition-colors'
-              >
-                Interactive OTP Tester
+              <Link href='/try' className='hover:text-[var(--color-accent)] transition-colors'>
+                Try It in the Browser
               </Link>
             </li>
             <li>

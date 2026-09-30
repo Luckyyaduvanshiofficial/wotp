@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
+import { DOCS_PAGES } from '@/features/docs/docs-nav';
 import { CopyButton } from '@/features/landing/components/copy-button';
 import { ContributorsSection } from '@/features/landing/components/contributors';
 import { DialApparatus } from '@/features/landing/components/dial-apparatus';
@@ -12,33 +13,35 @@ import { Icons } from '@/components/icons';
 import { SITE_URL } from '@/lib/site';
 
 export const metadata: Metadata = {
-  title: 'WA OTP — Open Source WhatsApp & Telegram OTP Gateway (FastAPI Python)',
+  title: 'WA OTP: open source, self-hosted WhatsApp & Telegram OTP gateway',
   description:
-    'Lightning-fast open-source WhatsApp & Telegram OTP gateway built in FastAPI Python. Instant verification, unmetered Telegram delivery, Meta Cloud API integration, and self-hostable.',
+    'A free, open-source OTP gateway you host yourself on your own Meta WhatsApp Cloud API and Telegram bot credentials. Two HTTP calls, hashed codes, no hosted tier and nothing to pay this project.',
   keywords: [
-    'Open Source WhatsApp OTP Gateway',
-    'FastAPI Python OTP Service',
-    'WhatsApp OTP Gateway',
-    'Telegram OTP Gateway',
-    'Free Telegram OTP',
-    'Meta Cloud API WhatsApp OTP',
-    'Self Hosted OTP Gateway',
-    'India OTP API',
-    'Developer Phone Auth'
+    'open source OTP gateway',
+    'self hosted OTP service',
+    'WhatsApp OTP API',
+    'Telegram OTP bot',
+    'free OTP service',
+    'FastAPI OTP service',
+    'phone verification API',
+    'Meta Cloud API OTP',
+    'BYOK OTP gateway',
+    'docker OTP service'
   ],
+  alternates: { canonical: '/' },
   openGraph: {
-    title: 'WA OTP — Open Source WhatsApp & Telegram OTP Gateway (FastAPI Python)',
+    title: 'WA OTP: open source, self-hosted WhatsApp & Telegram OTP gateway',
     description:
-      'Lightning-fast open-source WhatsApp & Telegram OTP gateway built in FastAPI Python. Free unmetered Telegram delivery and Meta Cloud API integration.',
+      'Two HTTP calls, your own Meta and Telegram credentials, no hosted tier. Try the whole API in your browser before you install anything.',
     url: `${SITE_URL}`,
     siteName: 'WA OTP',
     type: 'website'
   },
   twitter: {
     card: 'summary_large_image',
-    title: 'WA OTP — Open Source WhatsApp & Telegram OTP Gateway (FastAPI Python)',
+    title: 'WA OTP: open source, self-hosted OTP gateway',
     description:
-      'Lightning-fast open-source WhatsApp & Telegram OTP gateway built with FastAPI Python. Free unmetered Telegram bot delivery and Meta WhatsApp Cloud API.'
+      'Two HTTP calls, your own credentials, no hosted tier. Try the whole API in your browser first.'
   }
 };
 
@@ -57,10 +60,16 @@ const VERIFY_CALL = `curl -X POST "$WAOTP_API/v1/otp/verify" \\
   -H "Content-Type: application/json" \\
   -d '{"to": "919876543210", "code": "123456"}'`;
 
+/*
+ * Every figure here is checkable against the repository. The previous revision
+ * claimed "87 / 87" tests and "100% code complete", which were true once, went
+ * stale, and read as invented. If a number on this page cannot be verified by
+ * running one command, it does not belong on this page.
+ */
 const STATS = [
-  { fig: 'free', label: 'unmetered telegram otp sends' },
-  { fig: '100%', label: 'backend & frontend code complete' },
-  { fig: '87 / 87', label: 'automated tests passing' }
+  { fig: '153', label: 'automated tests, all passing' },
+  { fig: '2', label: 'http calls in the whole integration' },
+  { fig: '0', label: 'per-message cost on telegram' }
 ];
 
 const META_CHALLENGES = [
@@ -114,15 +123,29 @@ export default function LandingPage() {
     '@context': 'https://schema.org',
     '@type': 'SoftwareApplication',
     name: 'WA OTP',
-    applicationCategory: 'SecurityApplication',
-    operatingSystem: 'Linux, Docker, Cloud',
+    applicationCategory: 'DeveloperApplication',
+    applicationSubCategory: 'One-time password gateway',
+    operatingSystem: 'Linux, Docker, macOS',
+    license: 'https://www.gnu.org/licenses/agpl-3.0.html',
+    codeRepository: GITHUB_URL || undefined,
+    programmingLanguage: ['Python', 'TypeScript'],
     offers: {
       '@type': 'Offer',
       price: '0',
-      priceCurrency: 'USD'
+      priceCurrency: 'USD',
+      description:
+        'Free and open source. Meta bills your own account directly for WhatsApp messages.'
     },
+    featureList: [
+      'Two-call OTP API: send and verify',
+      'WhatsApp Cloud API delivery on your own Meta account',
+      'Free Telegram bot delivery with no business verification',
+      'SHA-256 hashed codes and API keys, Fernet-encrypted provider tokens',
+      'Monthly quota, per-phone throttle and per-key rate limiting',
+      'Self-hosted with Docker Compose, no hosted tier'
+    ],
     description:
-      'Lightning-fast open-source WhatsApp and Telegram OTP gateway built with FastAPI Python. Sub-second delivery, unmetered Telegram bot OTP, and self-hostable.',
+      'Open-source, self-hosted OTP gateway. Send and verify one-time passwords over your own WhatsApp Cloud API account or Telegram bot with two HTTP calls.',
     author: {
       '@type': 'Person',
       name: 'Lucky Yaduvanshi',
@@ -162,17 +185,17 @@ export default function LandingPage() {
           </p>
 
           <div className='lm-actions'>
-            <Link href='/docs' className='lm-actions__primary'>
+            <Link href='/try' className='lm-actions__primary'>
+              try it in the browser
+            </Link>
+            <Link href='/docs/self-hosting' className='lm-actions__ghost'>
               self-host it
-            </Link>
-            <Link href='/dashboard/tester' className='lm-actions__ghost'>
-              test in sandbox
-            </Link>
-            <Link href='/telegram' className='lm-actions__ghost'>
-              telegram otp channel ↗
             </Link>
             <Link href='/docs' className='lm-actions__ghost'>
               read the docs
+            </Link>
+            <Link href='/telegram' className='lm-actions__ghost'>
+              telegram otp channel ↗
             </Link>
             {GITHUB_URL ? (
               <a href={GITHUB_URL} target='_blank' rel='noreferrer' className='lm-actions__ghost'>
@@ -180,6 +203,10 @@ export default function LandingPage() {
               </a>
             ) : null}
           </div>
+          <p className='lm-lede mt-3 text-sm'>
+            No install and no signup to look: the playground runs the real send and verify rules in
+            your browser and sends nothing anywhere.
+          </p>
         </div>
         <div className='lm-hero__foot'>
           <Ruler />
@@ -328,11 +355,13 @@ export default function LandingPage() {
           <div className='lm-head'>
             <p className='lm-eyebrow'>07 · self-host & contribute</p>
             <h2 className='lm-h2' id='selfhost-h'>
-              100% open source. run it yourself or partner with us.
+              100% open source. run it yourself, on your own credentials.
             </h2>
             <p className='lm-lede'>
-              the entire repository is open source under an permissive licence. run it on a $4 vps,
-              plug in your company credentials, or help sponsor a production meta line.
+              The whole repository is open source under the <strong>AGPL-3.0</strong>. Run it on a
+              $4 VPS, plug in your own Meta and Telegram credentials, and you owe this project
+              nothing. The copyleft is deliberate: fork it, modify it, even sell hosting on it, but
+              a modified version offered to users over a network has to publish its source.
             </p>
           </div>
 
@@ -346,22 +375,56 @@ export default function LandingPage() {
           </dl>
         </section>
 
+        {/* Internal index. Every docs page is linked from the home page by name
+            and by what it answers, which is how a crawler finds them and how a
+            reader decides which one to open. */}
+        <section className='lm-section' id='docs-index' aria-labelledby='docs-index-h'>
+          <div className='lm-head'>
+            <p className='lm-eyebrow'>08 · documentation</p>
+            <h2 className='lm-h2' id='docs-index-h'>
+              start with the page that matches your problem.
+            </h2>
+            <p className='lm-lede'>
+              Two calls to integrate, but the work around them is real. These are the six pages the
+              docs are made of, and the short version of what each one settles.
+            </p>
+          </div>
+
+          <div className='lm-specs'>
+            {DOCS_PAGES.map((page) => (
+              <article className='lm-spec' key={page.href}>
+                <div className='lm-spec__head'>
+                  <h3 className='lm-spec__route'>
+                    <Link href={page.href}>{page.label}</Link>
+                  </h3>
+                  <p className='lm-spec__note'>{page.intent}</p>
+                </div>
+                <p className='lm-spec__desc text-sm text-muted-foreground'>{page.blurb}</p>
+              </article>
+            ))}
+          </div>
+        </section>
+
         {/* Contributors Section */}
         <ContributorsSection />
 
         <section className='lm-section lm-section--close' aria-labelledby='start-h'>
           <h2 className='lm-h2' id='start-h'>
-            clone it and self-host in minutes, or try the sandbox first.
+            see it work, then clone it.
           </h2>
+          <p className='lm-lede'>
+            The playground needs no install and no account, and it sends nothing. When you have seen
+            the wire format, the compose file is the next step.
+          </p>
           <div className='lm-actions'>
-            <Link href='/docs' className='lm-actions__primary'>
+            <Link href='/try' className='lm-actions__primary'>
+              try it in the browser
+            </Link>
+            <Link href='/docs/self-hosting' className='lm-actions__ghost'>
               self-host it
             </Link>
-            <Link href='/dashboard/tester' className='lm-actions__ghost'>
-              test in sandbox
-            </Link>
-            <Link href='/docs' className='lm-actions__ghost'>
-              read the docs
+            <Link href='/docs/quickstart' className='lm-actions__ghost'>
+              quickstart
             </Link>
           </div>
         </section>
