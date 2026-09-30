@@ -52,6 +52,20 @@ USER_STATUS_FIELD = {
     "maxSelect": 1,
 }
 
+# Self-service update rule for the operator auth collection.
+#
+# `id = @request.auth.id` alone lets a signed-in user PATCH *any* field of their
+# own record — including `status`, which is the only thing that gates a
+# suspended account's API keys, and `verified`. The `:changed` modifier is
+# PocketBase's documented way to forbid that: it is true only when the client
+# submitted the field AND its value differs from the stored one, so a client
+# that echoes the current value still works while a real change is rejected.
+SELF_UPDATE_RULE = (
+    "id = @request.auth.id"
+    " && @request.body.status:changed = false"
+    " && @request.body.verified:changed = false"
+)
+
 SEED_SETTINGS = {
     "meta_phone_number_id": "",
     "meta_token_enc": "",
@@ -81,6 +95,13 @@ def auth_collection_payload(physical: str) -> dict:
       (`scripts/create_admin.py`, or the PocketBase admin UI). An open create
       rule would let any visitor register and then mint an API key against the
       operator's own Meta account.
+    - updateRule additionally refuses to let a user change their own `status` or
+      `verified`. Without that guard, `status` — which is the only thing
+      gating a suspended operator's keys — could be set back to "active" by
+      that same user through the PocketBase REST API, using their own session
+      token. `:changed = false` (PocketBase's documented modifier for exactly
+      this) permits a client that round-trips the current value but rejects a
+      change to it.
     - Index names embed the physical name: SQLite index names are unique
       across the whole DB file, so they must not collide with the stock
       `users` collection's indexes.
@@ -91,7 +112,7 @@ def auth_collection_payload(physical: str) -> dict:
         "listRule": "id = @request.auth.id",
         "viewRule": "id = @request.auth.id",
         "createRule": None,
-        "updateRule": "id = @request.auth.id",
+        "updateRule": SELF_UPDATE_RULE,
         "deleteRule": None,
         "passwordAuth": {"enabled": True, "identityFields": ["email"]},
         "authRule": "",
@@ -360,19 +381,27 @@ def main() -> int:
             existing_names = {f.get("name") for f in users_json.get("fields") or []}
             missing = [d for d in (USER_STATUS_FIELD,)
                        if d["name"] not in existing_names]
-            if not missing:
-                results.append(("users", "exists", "status field already present"))
+            # A dedicated instance still needs the same self-update guard: the
+            # stock `users` collection ships with a permissive update rule, so
+            # `status` would be self-editable there too.
+            rule_needs_guard = users_json.get("updateRule") != SELF_UPDATE_RULE
+            if not missing and not rule_needs_guard:
+                results.append(("users", "exists", "status field and update rule already present"))
             else:
                 patched = dict(users_json)
-                patched["fields"] = list(users_json.get("fields") or []) + missing
+                if missing:
+                    patched["fields"] = list(users_json.get("fields") or []) + missing
+                patched["updateRule"] = SELF_UPDATE_RULE
                 r = http.patch("/api/collections/users", headers=headers, json=patched)
                 if r.status_code >= 400:
                     print(f"error: patching users failed ({r.status_code}): "
                           f"{r.text[:300]}", file=sys.stderr)
                     return 1
-                results.append(
-                    ("users", "patched", "added: " + ", ".join(d["name"] for d in missing))
-                )
+                added = [d["name"] for d in missing]
+                if added:
+                    results.append(("users", "patched", "added: " + ", ".join(added)))
+                if rule_needs_guard:
+                    results.append(("users", "patched", "self-update guard on status/verified"))
             ids["users"] = users_json["id"]
 
         # 3. prefixed wa-otp base collections; api_keys first because otp_codes

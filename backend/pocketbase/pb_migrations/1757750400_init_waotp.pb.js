@@ -46,6 +46,17 @@ migrate((app) => {
   // (`scripts/create_admin.py`, or the PocketBase admin UI). An open create
   // rule here would let any visitor register and mint an API key against the
   // operator's own WhatsApp account.
+  // Self-service update rule. `id = @request.auth.id` alone is a record
+  // filter, not a field allowlist: it would let a signed-in user PATCH their
+  // own `status` (the only gate on a suspended account's keys) or `verified`.
+  // `:changed = false` is PocketBase's documented modifier for forbidding a
+  // change to a specific field while still accepting a client that round-trips
+  // the current value.
+  const SELF_UPDATE_RULE =
+    "id = @request.auth.id" +
+    " && @request.body.status:changed = false" +
+    " && @request.body.verified:changed = false"
+
   let users
   if (PREFIX) {
     try {
@@ -58,7 +69,7 @@ migrate((app) => {
         viewRule: "id = @request.auth.id",
         // operator-only: accounts are provisioned, never self-registered
         createRule: null,
-        updateRule: "id = @request.auth.id",
+        updateRule: SELF_UPDATE_RULE,
         deleteRule: null,
         passwordAuth: { enabled: true, identityFields: ["email"] },
         authRule: "",
@@ -90,8 +101,10 @@ migrate((app) => {
     }
     // Same operator-only rule as the prefixed branch. The stock `users`
     // collection ships with an open create rule, which on a dedicated install
-    // is the same signup hole; close it here too.
+    // is the same signup hole; close it here too, and apply the same
+    // self-update guard.
     users.createRule = null
+    users.updateRule = SELF_UPDATE_RULE
     app.save(users)
   }
   const usersId = users.id
