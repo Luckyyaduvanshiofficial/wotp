@@ -19,6 +19,7 @@ import { Button, buttonVariants } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
 import { Skeleton } from '@/components/ui/skeleton';
 import { cn } from '@/lib/utils';
+import { TEMP_MAIL_ENABLED, TEMP_MAIL_URL, tempMailHost } from '@/lib/temp-mail';
 
 function UsageCard() {
   const { data, isLoading, isError, error, refetch, isFetching } = useQuery({
@@ -679,6 +680,9 @@ function RecentKeysCard() {
 }
 
 function TempMailTipCard() {
+  // Nothing to show unless this installation opted in — see lib/temp-mail.ts.
+  if (!TEMP_MAIL_ENABLED) return null;
+
   return (
     <Card className='border border-sky-500/25 bg-gradient-to-br from-sky-500/10 via-sky-500/[0.03] to-transparent shadow-sm'>
       <CardHeader className='p-4 sm:p-6 pb-2 sm:pb-3'>
@@ -697,11 +701,11 @@ function TempMailTipCard() {
       <CardContent className='p-4 sm:p-6 pt-0 space-y-2.5'>
         <p className='text-xs text-muted-foreground leading-relaxed'>
           Testing your application&apos;s registration and authentication flows? Use disposable inboxes on{' '}
-          <strong className='text-foreground font-medium'>tempmail.codaipro.com</strong> to test without sharing your real email address.
+          <strong className='text-foreground font-medium'>{tempMailHost()}</strong> to test without sharing your real email address.
         </p>
         <div>
           <a
-            href='https://tempmail.codaipro.com/'
+            href={TEMP_MAIL_URL}
             target='_blank'
             rel='noopener noreferrer'
             className='inline-flex items-center gap-1.5 text-xs font-semibold text-sky-600 dark:text-sky-400 hover:underline'

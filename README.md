@@ -126,8 +126,12 @@ anything, as long as you have not modified it. Details — including the one cas
 
 **Nothing breaks.** This is a hard requirement of the design, and here is why it holds:
 
-- No hostname, token, or account belonging to the authors appears in the code. Not in a default, not in
-  a fallback, not in a comment. `grep -ri codaipro .` returns nothing.
+- No hostname, token, or account belonging to the authors appears in the code as a default, a fallback,
+  or a value you could inherit by forgetting to edit something. Every example URL in the shipped
+  configuration is `localhost` or `yourdomain.com`; the one optional third-party link the dashboard can
+  render — a disposable-inbox prompt on the login screen — is **empty unless you set
+  `NEXT_PUBLIC_TEMP_MAIL_URL` yourself**, and every surface that mentions it renders nothing when it is
+  unset.
 - There is no call to any service other than the ones you configure: your PocketBase, your Meta app, your
   Telegram bot.
 - Nothing is fetched at boot — no licence server, no config endpoint, no telemetry endpoint.
