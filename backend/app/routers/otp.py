@@ -31,7 +31,7 @@ from ..dependencies import idempotency_store, owner_lock, require_api_key, verif
 from ..providers import ProviderError, build_whatsapp_provider
 from ..services import telegram as telegram_service
 from ..services.otp import create_otp, verify_otp
-from ..services.pocketbase import PocketBaseError, wa_collection
+from ..services.pocketbase import wa_collection
 from ..services.quota import (
     month_window,
     monthly_used,

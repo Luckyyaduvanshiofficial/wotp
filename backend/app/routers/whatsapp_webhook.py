@@ -25,7 +25,7 @@ from fastapi import APIRouter, Header, Request
 from fastapi.responses import JSONResponse, PlainTextResponse
 
 from ..providers import build_whatsapp_provider
-from ..services.pocketbase import PocketBaseError, pb_literal, wa_collection
+from ..services.pocketbase import pb_literal, wa_collection
 from ..services.settings import get_app_settings
 
 router = APIRouter(tags=["whatsapp"])
