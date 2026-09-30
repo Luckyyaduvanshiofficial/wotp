@@ -26,26 +26,24 @@ def test_send_whatsapp_happy_path(client):
     body = r.json()
     assert body == {
         "ok": True,
-        "mode": "platform",
         "channel": "whatsapp",
         "request_id": body["request_id"],
-        "wa_message_id": body["wa_message_id"],
+        "message_id": body["message_id"],
         "expires_in": 300,
-        "free_used": 1,
-        "free_limit": 500,
+        "used": 1,
+        "limit": 500,
         "reset_utc": body["reset_utc"],
     }
     assert body["reset_utc"].endswith("T00:00:00Z")
 
-    # audit row written, cost_type=free; response links to it
+    # audit row written; response links to it
     messages = list(fake.records["messages"].values())
     assert len(messages) == 1
     assert messages[0]["phone"] == "919876543210"
     assert messages[0]["status"] == "sent"
-    assert messages[0]["cost_type"] == "free"
     assert messages[0]["wa_message_id"].startswith("mock-")
     assert body["request_id"] == messages[0]["id"]
-    assert body["wa_message_id"] == messages[0]["wa_message_id"]
+    assert body["message_id"] == messages[0]["wa_message_id"]
 
     # exactly one hashed code stored; plaintext never returned anywhere
     codes = list(fake.records["otp_codes"].values())
@@ -117,7 +115,7 @@ def test_verify_expired_code(client):
 def test_send_monthly_quota_blocks(client):
     c, fake = client
     add_developer(fake)
-    fake.records["settings"]["set1"]["free_monthly_limit"] = 2
+    fake.records["settings"]["set1"]["monthly_send_quota"] = 2
 
     assert send(client=c).status_code == 200
     assert send(client=c, payload={"to": "919876543210", "code": "111111"}).status_code == 200
@@ -125,8 +123,8 @@ def test_send_monthly_quota_blocks(client):
     assert r.status_code == 429
     body = r.json()
     assert body["error"] == "quota_exceeded"
-    assert body["free_used"] == 2
-    assert body["free_limit"] == 2
+    assert body["used"] == 2
+    assert body["limit"] == 2
     # Retry-After points at the monthly reset (min 60s)
     assert int(r.headers["Retry-After"]) >= 60
 
@@ -149,10 +147,10 @@ def test_failed_delivery_never_consumes_quota(client, monkeypatch):
     get_settings.cache_clear()
 
     async def boom(*args, **kwargs):
-        from app.services.meta import MetaError
-        raise MetaError('{"error": {"message": "template not approved"}}')
+        from app.providers import ProviderError
+        raise ProviderError('{"error": {"message": "template not approved"}}')
 
-    monkeypatch.setattr("app.services.meta.send_otp_template", boom)
+    monkeypatch.setattr("app.providers.meta.MetaProvider.send_otp", boom)
 
     r = send(client=c)
     assert r.status_code == 502
@@ -223,7 +221,6 @@ def test_usage_endpoint(client):
     body = r.json()
     assert body["used"] == 1
     assert body["limit"] == 500
-    assert body["plan"] == "free"
     assert body["reset_utc"].endswith("T00:00:00Z")
 
 
@@ -266,8 +263,8 @@ def test_send_idempotency_replay_expires_with_the_code(client):
     # backdate the cache entry past the code TTL (300 s in test settings)
     from app import dependencies
     entry = ("key1", "k1")
-    _expires, body = dependencies.idempotency_store._entries[entry]
-    dependencies.idempotency_store._entries[entry] = (0.0, body)
+    _expires, status, body = dependencies.idempotency_store._entries[entry]
+    dependencies.idempotency_store._entries[entry] = (0.0, status, body)
 
     second = send(client=c, headers=hdrs)
     assert second.status_code == 200
@@ -336,6 +333,114 @@ def test_per_key_rate_limit(client):
     assert r.headers["Retry-After"] == "60"
 
 
+# ---- per-IP limiter runs BEFORE authentication ----
+
+
+def test_ip_rate_limit_applies_without_any_credential(client):
+    """The per-IP gate must cover a caller with no valid credential at all —
+    otherwise the only limit on unauthenticated traffic is nothing."""
+    c, fake = client
+    fake.records["settings"]["set1"]["ratelimit_per_ip_per_min"] = 1
+    from app.services.settings import invalidate_settings_cache
+    invalidate_settings_cache()
+
+    assert send(client=c, headers={}).status_code == 401  # no key at all
+    r = send(client=c, headers={})
+    assert r.status_code == 429
+    assert r.json()["error"] == "rate_limited"
+    assert r.headers["Retry-After"] == "60"
+
+
+def test_ip_rate_limit_applies_to_invented_keys(client):
+    """A flood of made-up keys must hit the IP ceiling, not sail past it."""
+    c, fake = client
+    fake.records["settings"]["set1"]["ratelimit_per_ip_per_min"] = 2
+    from app.services.settings import invalidate_settings_cache
+    invalidate_settings_cache()
+
+    hdrs = {"X-Api-Key": "waotp_0000000000000000000000000000000000000000"}
+    assert send(client=c, headers=hdrs).status_code == 401
+    assert send(client=c, headers=hdrs).status_code == 401
+    assert send(client=c, headers=hdrs).status_code == 429
+
+
+def test_unknown_api_key_is_negatively_cached(client, monkeypatch):
+    """Repeating an unknown key must not repeat the control-plane lookup."""
+    c, fake = client
+    add_developer(fake)
+
+    lookups = []
+    original_list = fake.list
+
+    async def counting_list(collection, **kwargs):
+        if collection == "api_keys":
+            lookups.append(collection)
+        return await original_list(collection, **kwargs)
+
+    monkeypatch.setattr(fake, "list", counting_list)
+
+    bad = {"X-Api-Key": "waotp_this-key-does-not-exist-00000000000"}
+    for _ in range(4):
+        assert send(client=c, headers=bad).status_code == 401
+    assert len(lookups) == 1
+
+
+def test_negative_cache_is_bounded(client):
+    """The negative cache itself must not be growable without limit."""
+    from app import dependencies
+
+    now = 1_000_000.0
+    for i in range(dependencies._UNKNOWN_KEY_MAX + 500):
+        dependencies._remember_unknown(f"hash-{i}", now)
+    assert len(dependencies._unknown_key_cache) <= dependencies._UNKNOWN_KEY_MAX
+
+
+def test_forwarded_header_is_ignored_unless_proxy_is_trusted(client, monkeypatch):
+    c, fake = client
+    add_developer(fake)
+    from app import dependencies
+    from app.core.config import get_settings
+
+    monkeypatch.setenv("TRUST_PROXY_HEADERS", "0")
+    get_settings.cache_clear()
+
+    assert send(client=c, headers={**AUTH, "X-Forwarded-For": "1.2.3.4"}).status_code == 200
+    assert "1.2.3.4" not in dependencies._ip_rate_limiter._hits
+    assert "testclient" in dependencies._ip_rate_limiter._hits
+
+
+def test_forwarded_header_uses_rightmost_entry_when_trusted(client, monkeypatch):
+    """The right-most entry is the one the nearest proxy appended; the left
+    side is client-controlled and must not become the limiter bucket."""
+    c, fake = client
+    add_developer(fake)
+    from app import dependencies
+    from app.core.config import get_settings
+
+    monkeypatch.setenv("TRUST_PROXY_HEADERS", "1")
+    get_settings.cache_clear()
+
+    r = send(client=c, headers={**AUTH, "X-Forwarded-For": "1.2.3.4, 5.6.7.8"})
+    assert r.status_code == 200
+    assert "5.6.7.8" in dependencies._ip_rate_limiter._hits
+    assert "1.2.3.4" not in dependencies._ip_rate_limiter._hits
+
+
+def test_unparseable_forwarded_header_falls_back_to_socket_peer(client, monkeypatch):
+    """A junk header must not mint a fresh limiter bucket per request."""
+    c, fake = client
+    add_developer(fake)
+    from app import dependencies
+    from app.core.config import get_settings
+
+    monkeypatch.setenv("TRUST_PROXY_HEADERS", "1")
+    get_settings.cache_clear()
+
+    assert send(client=c, headers={**AUTH, "X-Forwarded-For": "not-an-ip"}).status_code == 200
+    assert "not-an-ip" not in dependencies._ip_rate_limiter._hits
+    assert "testclient" in dependencies._ip_rate_limiter._hits
+
+
 def test_telegram_not_linked_then_linked(client):
     c, fake = client
     add_developer(fake)
@@ -378,7 +483,7 @@ def test_telegram_bypasses_whatsapp_quota(client):
     block telegram sends, and telegram sends must not consume quota."""
     c, fake = client
     add_developer(fake)
-    fake.records["settings"]["set1"]["free_monthly_limit"] = 1
+    fake.records["settings"]["set1"]["monthly_send_quota"] = 1
     fake.records["tg_links"]["link1"] = {
         "id": "link1", "phone": "919876543210", "chat_id": "777", "tg_user_id": "555",
     }
@@ -394,8 +499,8 @@ def test_telegram_bypasses_whatsapp_quota(client):
     assert r_tg.status_code == 200
     body = r_tg.json()
     assert body["channel"] == "telegram"
-    assert body["free_used"] == 1  # current whatsapp used, NOT incremented
-    assert body["free_limit"] == 1
+    assert body["used"] == 1  # current whatsapp used, NOT incremented
+    assert body["limit"] == 1
     assert body["request_id"]  # linked to the telegram audit row
 
     # telegram rows don't count towards the whatsapp quota either
@@ -468,7 +573,7 @@ def test_concurrent_sends_cannot_exceed_quota(client, monkeypatch):
 
     c, fake = client
     add_developer(fake)
-    fake.records["settings"]["set1"]["free_monthly_limit"] = 1
+    fake.records["settings"]["set1"]["monthly_send_quota"] = 1
     fake.records["settings"]["set1"]["meta_phone_number_id"] = "PN123"
     fake.records["settings"]["set1"]["meta_token_enc"] = encrypt_secret("REALMETA")
 
@@ -479,7 +584,7 @@ def test_concurrent_sends_cannot_exceed_quota(client, monkeypatch):
         await asyncio.sleep(0.05)  # hold the lock across the provider await
         return "prov-msg-1"
 
-    monkeypatch.setattr("app.services.meta.send_otp_template", slow_send)
+    monkeypatch.setattr("app.providers.meta.MetaProvider.send_otp", slow_send)
 
     barrier = threading.Barrier(2)
     statuses = []
@@ -497,6 +602,114 @@ def test_concurrent_sends_cannot_exceed_quota(client, monkeypatch):
 
     assert sorted(statuses) == [200, 429]
     assert len(fake.records["messages"]) == 1  # exactly one ledger row
+
+
+def test_two_keys_of_one_owner_cannot_double_spend_quota(client, monkeypatch):
+    """The cap and the throttle are owner-scoped, so the lock must be too.
+
+    Reproduces the gap this replaces: the send lock was keyed on the API key
+    id, so two concurrent sends on two different keys belonging to the same
+    owner each passed the quota check before either wrote its ledger row — and
+    both delivered, over cap.
+    """
+    import asyncio
+    import threading
+
+    from app.core.config import get_settings
+    from app.core.security import encrypt_secret, sha256_hex
+
+    c, fake = client
+    add_developer(fake)
+
+    second_key = "waotp_secondkey000000000000000000000000000"
+    fake.records["api_keys"]["key2"] = {
+        "id": "key2", "owner": "usr1", "key_hash": sha256_hex(second_key),
+        "last4": second_key[-4:], "label": "second", "active": True,
+    }
+    fake.records["settings"]["set1"]["monthly_send_quota"] = 1
+    fake.records["settings"]["set1"]["meta_phone_number_id"] = "PN123"
+    fake.records["settings"]["set1"]["meta_token_enc"] = encrypt_secret("REALMETA")
+
+    monkeypatch.setenv("WAOTP_MOCK_DELIVERY", "0")
+    get_settings.cache_clear()
+
+    async def slow_send(*args, **kwargs):
+        await asyncio.sleep(0.05)  # hold the lock across the provider await
+        return "prov-msg-1"
+
+    monkeypatch.setattr("app.providers.meta.MetaProvider.send_otp", slow_send)
+
+    barrier = threading.Barrier(2)
+    statuses = []
+
+    def hit(key):
+        barrier.wait()
+        r = c.post("/v1/otp/send", json={"to": "919876543210"}, headers={"X-Api-Key": key})
+        statuses.append(r.status_code)
+
+    threads = [
+        threading.Thread(target=hit, args=(TEST_KEY,)),
+        threading.Thread(target=hit, args=(second_key,)),
+    ]
+    for t in threads:
+        t.start()
+    for t in threads:
+        t.join()
+
+    assert sorted(statuses) == [200, 429]
+    assert len(fake.records["messages"]) == 1  # exactly one ledger row
+
+
+def test_two_keys_of_one_owner_share_the_phone_throttle(client, monkeypatch):
+    """Same gap, via the per-phone throttle rather than the monthly cap."""
+    import asyncio
+    import threading
+
+    from app.core.config import get_settings
+    from app.core.security import encrypt_secret, sha256_hex
+
+    c, fake = client
+    add_developer(fake)
+
+    second_key = "waotp_secondkey000000000000000000000000001"
+    fake.records["api_keys"]["key2"] = {
+        "id": "key2", "owner": "usr1", "key_hash": sha256_hex(second_key),
+        "last4": second_key[-4:], "label": "second", "active": True,
+    }
+    # cap off; the throttle is the only limit under test
+    fake.records["settings"]["set1"]["monthly_send_quota"] = 0
+    fake.records["settings"]["set1"]["per_phone_hourly"] = 1
+    fake.records["settings"]["set1"]["meta_phone_number_id"] = "PN123"
+    fake.records["settings"]["set1"]["meta_token_enc"] = encrypt_secret("REALMETA")
+
+    monkeypatch.setenv("WAOTP_MOCK_DELIVERY", "0")
+    get_settings.cache_clear()
+
+    async def slow_send(*args, **kwargs):
+        await asyncio.sleep(0.05)
+        return "prov-msg-1"
+
+    monkeypatch.setattr("app.providers.meta.MetaProvider.send_otp", slow_send)
+
+    barrier = threading.Barrier(2)
+    statuses = []
+
+    def hit(key):
+        barrier.wait()
+        r = c.post("/v1/otp/send", json={"to": "919876543210"}, headers={"X-Api-Key": key})
+        statuses.append(r.status_code)
+
+    threads = [
+        threading.Thread(target=hit, args=(TEST_KEY,)),
+        threading.Thread(target=hit, args=(second_key,)),
+    ]
+    for t in threads:
+        t.start()
+    for t in threads:
+        t.join()
+
+    assert sorted(statuses) == [200, 429]
+    assert len(fake.records["messages"]) == 1
 
 
 # ---- P1: malformed JSON must 400, not 500 ----
@@ -593,10 +806,10 @@ def test_delivery_failed_retryable_on_meta_timeout(client, monkeypatch):
     get_settings.cache_clear()
 
     async def timeout(*args, **kwargs):
-        from app.services.meta import MetaError
-        raise MetaError("meta unreachable: ConnectTimeout", retryable=True)
+        from app.providers import ProviderError
+        raise ProviderError("meta unreachable: ConnectTimeout", retryable=True)
 
-    monkeypatch.setattr("app.services.meta.send_otp_template", timeout)
+    monkeypatch.setattr("app.providers.meta.MetaProvider.send_otp", timeout)
     r = send(client=c)
     assert r.status_code == 502
     body = r.json()
@@ -658,3 +871,206 @@ def test_ledger_write_failure_returns_502_and_logs(client, monkeypatch, caplog):
     assert body["retryable"] is False  # retrying would double-send
     assert not fake.records["messages"] and not fake.records["otp_codes"]
     assert any("wa_message_id=mock-" in rec.getMessage() for rec in caplog.records)
+
+
+# ---- F19: a delivered send whose ledger write failed must not be re-sent ----
+
+
+def test_post_delivery_ledger_failure_is_replayed_not_resent(client, monkeypatch, caplog):
+    """The provider accepted the message; a retry must not send a second one.
+
+    Before this, the error was returned once and never cached, so the retry
+    with the same Idempotency-Key delivered another OTP — and only the newest
+    code verifies, so the user's first message became dead.
+    """
+    import logging
+
+    from app.core.config import get_settings
+    from app.core.security import encrypt_secret
+    from app.services.pocketbase import PocketBaseError
+    from conftest import FakePB
+
+    c, fake = client
+    add_developer(fake)
+    fake.records["settings"]["set1"]["meta_phone_number_id"] = "PN123"
+    fake.records["settings"]["set1"]["meta_token_enc"] = encrypt_secret("REALMETA")
+    monkeypatch.setenv("WAOTP_MOCK_DELIVERY", "0")
+    get_settings.cache_clear()
+
+    delivered = []
+
+    async def counting_send(*args, **kwargs):
+        delivered.append(kwargs.get("code") or args[2])
+        return f"prov-{len(delivered)}"
+
+    monkeypatch.setattr("app.providers.meta.MetaProvider.send_otp", counting_send)
+
+    original_create = FakePB.create
+
+    async def create_fails(self, collection, data):
+        if collection == "messages":
+            raise PocketBaseError(500, "pb write failed")
+        return await original_create(self, collection, data)
+
+    monkeypatch.setattr(FakePB, "create", create_fails)
+
+    hdrs = {**AUTH, "Idempotency-Key": "order-42"}
+    with caplog.at_level(logging.CRITICAL, logger="waotp"):
+        first = send(client=c, headers=hdrs)
+        second = send(client=c, headers=hdrs)
+
+    assert first.status_code == 502
+    assert first.json()["retryable"] is False
+
+    # the retry replays the same error instead of delivering a second code
+    assert second.status_code == 502
+    assert second.json() == first.json()
+    assert second.headers.get("Idempotency-Replayed") == "true"
+    assert len(delivered) == 1
+
+
+def test_post_delivery_transport_failure_is_not_a_503(client, monkeypatch):
+    """A PocketBase transport error after delivery must not be labelled
+    upstream_unavailable — that status explicitly invites a retry."""
+    import httpx
+
+    from app.core.config import get_settings
+    from app.core.security import encrypt_secret
+    from conftest import FakePB
+
+    c, fake = client
+    add_developer(fake)
+    fake.records["settings"]["set1"]["meta_phone_number_id"] = "PN123"
+    fake.records["settings"]["set1"]["meta_token_enc"] = encrypt_secret("REALMETA")
+    monkeypatch.setenv("WAOTP_MOCK_DELIVERY", "0")
+    get_settings.cache_clear()
+
+    async def fake_send(*args, **kwargs):
+        return "prov-msg-1"
+
+    original_create = FakePB.create
+
+    async def create_transport_fails(self, collection, data):
+        if collection == "messages":
+            raise httpx.ConnectError("connection refused")
+        return await original_create(self, collection, data)
+
+    monkeypatch.setattr("app.providers.meta.MetaProvider.send_otp", fake_send)
+    monkeypatch.setattr(FakePB, "create", create_transport_fails)
+
+    r = send(client=c, headers={**AUTH, "Idempotency-Key": "order-43"})
+    assert r.status_code == 502  # not 503
+    assert r.json()["error"] == "delivery_failed"
+    assert r.json()["retryable"] is False
+
+
+def test_provider_rejection_is_still_retryable_and_uncached(client, monkeypatch):
+    """Only the delivered-but-unrecorded failure is cached. A provider
+    rejection must stay genuinely retryable."""
+    from app.core.config import get_settings
+    from app.core.security import encrypt_secret
+
+    c, fake = client
+    add_developer(fake)
+    fake.records["settings"]["set1"]["meta_phone_number_id"] = "PN123"
+    fake.records["settings"]["set1"]["meta_token_enc"] = encrypt_secret("REALMETA")
+    monkeypatch.setenv("WAOTP_MOCK_DELIVERY", "0")
+    get_settings.cache_clear()
+
+    attempts = []
+
+    async def rejects(*args, **kwargs):
+        attempts.append(1)
+        from app.providers import ProviderError
+        raise ProviderError("template not approved")
+
+    monkeypatch.setattr("app.providers.meta.MetaProvider.send_otp", rejects)
+
+    hdrs = {**AUTH, "Idempotency-Key": "order-44"}
+    assert send(client=c, headers=hdrs).status_code == 502
+    second = send(client=c, headers=hdrs)
+    assert second.status_code == 502
+    assert "Idempotency-Replayed" not in second.headers
+    assert len(attempts) == 2  # the retry really was retried
+
+
+# ---- F11: the lock pools must not grow without bound ----
+
+
+def test_lock_pool_is_bounded():
+    import asyncio
+
+    from app.dependencies import LockPool
+
+    pool = LockPool(max_size=8)
+    for i in range(500):
+        pool.get(f"key-{i}")
+    assert len(pool) <= 8
+
+    # a key already in the pool returns the same lock (identity matters)
+    assert pool.get("key-499") is pool.get("key-499")
+
+
+def test_lock_pool_never_evicts_a_held_lock():
+    """Evicting a held lock would hand two callers separate locks for the same
+    key — a silent loss of mutual exclusion, which is worse than memory use."""
+    import asyncio
+
+    from app.dependencies import LockPool
+
+    pool = LockPool(max_size=1)
+    held = pool.get("held")
+
+    async def scenario():
+        async with held:
+            # inserting past the bound must not drop the held lock
+            for i in range(50):
+                pool.get(f"other-{i}")
+            assert pool.get("held") is held
+
+    asyncio.run(scenario())
+
+
+def test_lock_pool_clear():
+    from app.dependencies import LockPool
+
+    pool = LockPool(max_size=8)
+    pool.get("a")
+    assert len(pool) == 1
+    pool.clear()
+    assert len(pool) == 0
+
+
+def test_verify_locks_are_bounded_under_many_phones(client):
+    """A valid key naming many distinct phone numbers must not grow the pool
+    without limit."""
+    from app import dependencies
+
+    for i in range(dependencies._verify_locks._max + 200):
+        dependencies.verify_lock("usr1", f"9198765{i:05d}")
+    assert len(dependencies._verify_locks) <= dependencies._verify_locks._max
+
+
+def test_old_otp_invalidated_on_resend(client):
+    """Sending a new OTP invalidates the previous active OTP for that phone."""
+    c, fake = client
+    add_developer(fake)
+
+    # First send with custom code 111111
+    r1 = send(client=c, payload={"to": "919876543210", "code": "111111"})
+    assert r1.status_code == 200
+
+    # Second send with custom code 222222
+    r2 = send(client=c, payload={"to": "919876543210", "code": "222222"})
+    assert r2.status_code == 200
+
+    # Old code 111111 cannot be verified
+    v1 = c.post("/v1/otp/verify", json={"to": "919876543210", "code": "111111"}, headers=AUTH)
+    assert v1.status_code == 400
+    assert v1.json()["verified"] is False
+
+    # New code 222222 verifies successfully
+    v2 = c.post("/v1/otp/verify", json={"to": "919876543210", "code": "222222"}, headers=AUTH)
+    assert v2.status_code == 200
+    assert v2.json()["verified"] is True
+

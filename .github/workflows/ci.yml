@@ -1,0 +1,135 @@
+name: CI
+
+# Runs on every push and every pull request. Both long-lived branches
+# (main, feat/self-host) are covered by the push trigger.
+on:
+  push:
+  pull_request:
+
+# Cancel a superseded run on the same ref — a queued run against an older commit
+# tells you nothing once a newer one exists.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  # ---------------------------------------------------------------------------
+  # Backend: the full suite. It needs no network and no credentials — PocketBase,
+  # Meta and Telegram are all faked — which is what makes it safe to run on
+  # every push.
+  # ---------------------------------------------------------------------------
+  backend:
+    name: Backend tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: pip
+          cache-dependency-path: backend/requirements-dev.txt
+
+      - name: Install dependencies
+        working-directory: backend
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements-dev.txt
+
+      - name: Run test suite
+        working-directory: backend
+        # conftest.py pins every credential to empty and points PocketBase at an
+        # unroutable port, so this cannot reach a real service even when the
+        # runner happens to have a .env present.
+        run: pytest -q
+
+  # ---------------------------------------------------------------------------
+  # Frontend: typecheck, lint, formatting and a production build.
+  # ---------------------------------------------------------------------------
+  frontend:
+    name: Frontend checks
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: oven-sh/setup-bun@v2
+        with:
+          # .nvmrc pins NODE (22) — a Bun version file is separate on purpose.
+          bun-version-file: frontend/.bun-version
+
+      - name: Install dependencies
+        working-directory: frontend
+        # --frozen-lockfile: a lockfile that does not match package.json is a
+        # build that resolves differently than the one that was reviewed.
+        run: bun install --frozen-lockfile
+
+      - name: Typecheck
+        working-directory: frontend
+        run: bun run typecheck
+
+      - name: Lint
+        working-directory: frontend
+        run: bun run lint
+
+      - name: Formatting
+        working-directory: frontend
+        run: bun run format:check
+
+      # NEXT_PUBLIC_* values are inlined at build time, and the app deliberately
+      # throws when NEXT_PUBLIC_PB_URL is missing rather than defaulting to
+      # somebody else's server. A build therefore needs placeholders supplied.
+      - name: Build
+        working-directory: frontend
+        env:
+          NEXT_PUBLIC_PB_URL: http://127.0.0.1:8090
+          NEXT_PUBLIC_API_URL: http://127.0.0.1:8000
+          NEXT_PUBLIC_APP_URL: http://127.0.0.1:3000
+          NEXT_PUBLIC_PB_COLLECTIONS_PREFIX: waotp_
+          NEXT_PUBLIC_SENTRY_DISABLED: 'true'
+        run: bun run build
+
+  # ---------------------------------------------------------------------------
+  # Security: committed secrets and known-vulnerable dependency versions.
+  # ---------------------------------------------------------------------------
+  security:
+    name: Secret and dependency scan
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # gitleaks scans commits, so it needs history rather than a shallow copy.
+          fetch-depth: 0
+
+      - name: Scan for committed secrets
+        uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      # Advisory for now: the dependency baseline has not been triaged yet, and a
+      # red gate on an untouched transitive advisory trains people to ignore it.
+      # Flip continue-on-error off once the first report is clean, and treat a
+      # new advisory as a decision to make rather than noise.
+      - name: Audit Python dependencies
+        continue-on-error: true
+        run: |
+          python -m pip install --upgrade pip pip-audit
+          pip-audit -r backend/requirements.lock.txt
+
+      - uses: oven-sh/setup-bun@v2
+        with:
+          # .nvmrc pins NODE (22) — a Bun version file is separate on purpose.
+          bun-version-file: frontend/.bun-version
+
+      - name: Audit JavaScript dependencies
+        continue-on-error: true
+        working-directory: frontend
+        run: |
+          bun install --frozen-lockfile
+          bun audit --audit-level=high

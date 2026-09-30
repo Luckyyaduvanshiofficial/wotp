@@ -39,10 +39,13 @@ export interface Contributor {
  */
 export async function fetchContributors(): Promise<Contributor[]> {
   try {
-    const res = await fetch(`https://api.github.com/repos/${GITHUB_REPO}/contributors?per_page=12`, {
-      headers: { Accept: 'application/vnd.github+json' },
-      next: { revalidate: 86400 }
-    });
+    const res = await fetch(
+      `https://api.github.com/repos/${GITHUB_REPO}/contributors?per_page=12`,
+      {
+        headers: { Accept: 'application/vnd.github+json' },
+        next: { revalidate: 86400 }
+      }
+    );
     if (res.ok) {
       const data = (await res.json()) as Contributor[];
       if (Array.isArray(data) && data.length > 0) return data;

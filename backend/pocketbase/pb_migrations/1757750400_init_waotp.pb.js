@@ -14,7 +14,7 @@
  * instance) wa-otp gets its OWN auth collection, `{prefix}users`, and the
  * stock `users` collection — which belongs to whatever other project lives on
  * this instance — is NEVER read or modified. With the prefix explicitly set to
- * empty (dedicated instance), `plan`/`status` are added to the stock `users`
+ * empty (dedicated instance), `status` is added to the stock `users`
  * collection instead, matching `scripts/provision_pb.py`.
  *
  * Index NAMES embed the physical collection name on purpose: SQLite index
@@ -37,9 +37,26 @@ migrate((app) => {
   const CREATED = { name: "created", type: "autodate", onCreate: true }
   const UPDATED = { name: "updated", type: "autodate", onCreate: true, onUpdate: true }
 
-  // ---- developer auth collection -------------------------------------------
+  // ---- operator auth collection --------------------------------------------
   // Prefixed: wa-otp's own login pool, separate from every other app's users.
-  // Unprefixed (dedicated instance only): extend the stock `users` collection.
+  // Unprefixed (dedicated instance): extend the stock `users` collection.
+  //
+  // This installation is operator-owned: there is no public signup, so
+  // `createRule` is null and accounts are created out-of-band by the operator
+  // (`scripts/create_admin.py`, or the PocketBase admin UI). An open create
+  // rule here would let any visitor register and mint an API key against the
+  // operator's own WhatsApp account.
+  // Self-service update rule. `id = @request.auth.id` alone is a record
+  // filter, not a field allowlist: it would let a signed-in user PATCH their
+  // own `status` (the only gate on a suspended account's keys) or `verified`.
+  // `:changed = false` is PocketBase's documented modifier for forbidding a
+  // change to a specific field while still accepting a client that round-trips
+  // the current value.
+  const SELF_UPDATE_RULE =
+    "id = @request.auth.id" +
+    " && @request.body.status:changed = false" +
+    " && @request.body.verified:changed = false"
+
   let users
   if (PREFIX) {
     try {
@@ -50,20 +67,14 @@ migrate((app) => {
         type: "auth",
         listRule: "id = @request.auth.id",
         viewRule: "id = @request.auth.id",
-        // public developer signup; set to null for invite-only operation
-        createRule: "",
-        updateRule: "id = @request.auth.id",
+        // operator-only: accounts are provisioned, never self-registered
+        createRule: null,
+        updateRule: SELF_UPDATE_RULE,
         deleteRule: null,
         passwordAuth: { enabled: true, identityFields: ["email"] },
         authRule: "",
         manageRule: null,
         fields: [
-          {
-            name: "plan",
-            type: "select",
-            values: ["free", "paid"],
-            maxSelect: 1,
-          },
           {
             name: "status",
             type: "select",
@@ -80,14 +91,6 @@ migrate((app) => {
     }
   } else {
     users = app.findCollectionByNameOrId("users")
-    if (!users.fields.getByName("plan")) {
-      users.fields.add(new Field({
-        name: "plan",
-        type: "select",
-        values: ["free", "paid"],
-        maxSelect: 1,
-      }))
-    }
     if (!users.fields.getByName("status")) {
       users.fields.add(new Field({
         name: "status",
@@ -96,6 +99,12 @@ migrate((app) => {
         maxSelect: 1,
       }))
     }
+    // Same operator-only rule as the prefixed branch. The stock `users`
+    // collection ships with an open create rule, which on a dedicated install
+    // is the same signup hole; close it here too, and apply the same
+    // self-update guard.
+    users.createRule = null
+    users.updateRule = SELF_UPDATE_RULE
     app.save(users)
   }
   const usersId = users.id
@@ -167,57 +176,22 @@ migrate((app) => {
       // provider message id: WhatsApp "wamid..." or Telegram message id
       { name: "wa_message_id", type: "text", max: 128 },
       { name: "channel", type: "select", values: ["whatsapp", "telegram"], maxSelect: 1 },
-      { name: "status", type: "select", values: ["sent", "failed"], maxSelect: 1 },
-      { name: "cost_type", type: "select", values: ["free", "paid"], maxSelect: 1 },
+      // "sent" is written by the send path; the rest arrive later from the
+      // provider's status webhook. Quota does NOT count this field — see
+      // `billable` below and 1789430500_immutable_billable_usage.pb.js.
+      { name: "status", type: "select",
+        values: ["sent", "delivered", "read", "failed"], maxSelect: 1 },
+      // Written once by the send path when the provider accepted the message
+      // and never updated afterwards. Added by the billable migration on
+      // installs created before it existed.
+      { name: "billable", type: "bool" },
       { name: "error", type: "text", max: 500 },
     ],
+    // idx_owner_created serves the quota count (owner + created range);
+    // idx_wa_message_id serves the webhook's lookup by provider message id.
     indexes: [
       `CREATE INDEX idx_${physical("messages")}_owner_created ON \`${physical("messages")}\` (\`owner\`, \`created\`)`,
-    ],
-  }))
-
-  // ---- wallet_txns (append-only ledger; Phase 2) ----------------------------
-  app.save(new Collection({
-    name: physical("wallet_txns"),
-    type: "base",
-    listRule: null,
-    viewRule: null,
-    createRule: null,
-    updateRule: null,
-    deleteRule: null,
-    fields: [
-      CREATED,
-      UPDATED,
-      { name: "owner", type: "relation", collectionId: usersId, cascadeDelete: true, maxSelect: 1, required: true },
-      { name: "txn_type", type: "select", values: ["topup", "free", "spend", "refund"], maxSelect: 1 },
-      { name: "amount", type: "number" },
-      { name: "balance_after", type: "number" },
-      { name: "note", type: "text", max: 200 },
-    ],
-    indexes: [
-      `CREATE INDEX idx_${physical("wallet_txns")}_owner ON \`${physical("wallet_txns")}\` (\`owner\`, \`created\`)`,
-    ],
-  }))
-
-  // ---- rate_cards (Phase 2: weekly cron refresh) -----------------------------
-  app.save(new Collection({
-    name: physical("rate_cards"),
-    type: "base",
-    listRule: null,
-    viewRule: null,
-    createRule: null,
-    updateRule: null,
-    deleteRule: null,
-    fields: [
-      CREATED,
-      UPDATED,
-      { name: "country_iso", type: "text", required: true, max: 2 },
-      { name: "country_name", type: "text", max: 100 },
-      { name: "meta_rate_usd", type: "number" },
-      { name: "our_rate_inr", type: "number" },
-    ],
-    indexes: [
-      `CREATE UNIQUE INDEX idx_${physical("rate_cards")}_iso ON \`${physical("rate_cards")}\` (\`country_iso\`)`,
+      `CREATE INDEX idx_${physical("messages")}_wa_message_id ON \`${physical("messages")}\` (\`wa_message_id\`)`,
     ],
   }))
 
@@ -258,20 +232,36 @@ migrate((app) => {
       { name: "meta_phone_number_id", type: "text", max: 64 },
       // Fernet-encrypted at rest; even a PB dump should not leak the Meta token.
       { name: "meta_token_enc", type: "text", max: 500 },
+      // Also encrypted: this verifies inbound webhook signatures, so leaking it
+      // would let an attacker forge delivery-status callbacks.
+      { name: "meta_app_secret_enc", type: "text", max: 500 },
+      // Echoed back during Meta's subscription handshake. Read from the merged
+      // config, so setting it here works without a redeploy.
+      { name: "meta_verify_token", type: "text", max: 128 },
       { name: "meta_template", type: "text", max: 64 },
       { name: "meta_template_lang", type: "text", max: 16 },
       { name: "tg_bot_token", type: "text", max: 128 },
       { name: "tg_bot_username", type: "text", max: 64 },
-      { name: "free_monthly_limit", type: "number", onlyInt: true },
+      // Monthly WhatsApp send cap for THIS installation. 0 means "no cap":
+      // the operator is sending from their own Meta account, so there is no
+      // tier to enforce — the cap exists as a runaway/spend guard.
+      { name: "monthly_send_quota", type: "number", onlyInt: true },
       { name: "per_phone_hourly", type: "number", onlyInt: true },
       { name: "code_ttl_seconds", type: "number", onlyInt: true },
       { name: "max_attempts", type: "number", onlyInt: true },
       { name: "ratelimit_per_min", type: "number", onlyInt: true },
+      // Per-source-IP request cap. Bounds a single caller from cycling API
+      // keys or probing the verify endpoint.
+      { name: "ratelimit_per_ip_per_min", type: "number", onlyInt: true },
+      // Minimum seconds between two sends to the same number. 0 disables it
+      // (the hourly throttle still applies).
+      { name: "resend_cooldown_seconds", type: "number", onlyInt: true },
+      { name: "otp_length", type: "number", onlyInt: true },
     ],
   })
   app.save(settings)
 
-  // seed the single settings row with PRD §7 defaults
+  // seed the single settings row with the documented defaults
   const seed = new Record(settings)
   seed.set("meta_phone_number_id", "")
   seed.set("meta_token_enc", "")
@@ -279,18 +269,21 @@ migrate((app) => {
   seed.set("meta_template_lang", "en_US")
   seed.set("tg_bot_token", "")
   seed.set("tg_bot_username", "")
-  seed.set("free_monthly_limit", 500)
+  seed.set("monthly_send_quota", 0)
   seed.set("per_phone_hourly", 5)
   seed.set("code_ttl_seconds", 300)
   seed.set("max_attempts", 3)
   seed.set("ratelimit_per_min", 10)
+  seed.set("ratelimit_per_ip_per_min", 30)
+  seed.set("resend_cooldown_seconds", 0)
+  seed.set("otp_length", 6)
   app.save(seed)
 }, (app) => {
   const PREFIX = ($os.getenv("WAOTP_PB_COLLECTIONS_PREFIX") || "waotp_").trim()
   const physical = (logical) => PREFIX + logical
 
   // down: drop wa-otp's own collections, prefixed like the up-migration
-  for (const logical of ["settings", "tg_links", "rate_cards", "wallet_txns",
+  for (const logical of ["settings", "tg_links",
                          "messages", "otp_codes", "api_keys"]) {
     try {
       app.delete(app.findCollectionByNameOrId(physical(logical)))
@@ -310,7 +303,6 @@ migrate((app) => {
     // dedicated instance: only undo what we added to the stock `users`
     try {
       const users = app.findCollectionByNameOrId("users")
-      users.fields.removeByName("plan")
       users.fields.removeByName("status")
       app.save(users)
     } catch (e) {

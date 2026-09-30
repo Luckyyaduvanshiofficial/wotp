@@ -2,60 +2,423 @@
 
 # WA OTP
 
-**Verify a phone number with two API calls — over WhatsApp or Telegram.**
+**Self-hosted OTP delivery over WhatsApp or Telegram. Two API calls: send a code, check a code.**
 
-Self-hostable · No DLT registration · Telegram is free forever
+Open source · Self-hostable · You bring your own WhatsApp Business account
 
 [![License: AGPL v3](https://img.shields.io/badge/License-AGPL_v3-blue.svg)](https://www.gnu.org/licenses/agpl-3.0)
+[![Free & Open Source: Forever](https://img.shields.io/badge/Free%20%26%20Open%20Source-Forever-emerald.svg)](https://www.gnu.org/licenses/agpl-3.0)
 [![Backend: FastAPI](https://img.shields.io/badge/backend-FastAPI-009688.svg)](https://fastapi.tiangolo.com)
 [![Control plane: PocketBase](https://img.shields.io/badge/control%20plane-PocketBase%20v0.40.x-B8DBE4.svg)](https://pocketbase.io)
 [![Frontend: Next.js 16](https://img.shields.io/badge/frontend-Next.js%2016-black.svg)](https://nextjs.org)
+[![Tests: no network required](https://img.shields.io/badge/tests-no%20network%20required-brightgreen.svg)](#development)
 
 </div>
 
 ---
 
-WA OTP is an OTP delivery gateway built for people shipping small apps in India — the bhajan app, the housing-society app, the senior-citizen helpline. Their users know WhatsApp and do not use email, so phone verification is the only verification that works.
+## What this is
 
-The problem is that phone verification is a wall for a solo developer. SMS needs DLT registration. WhatsApp Business has onboarding, per-message pricing, and documentation written for companies. Neither fits someone who just wants to confirm a phone number in a weekend project.
+WA OTP is free, open-source software you run yourself. You clone it, point it at **your own** database and **your own**
+WhatsApp Business account (or your own Telegram bot), and it sends and verifies phone-number codes for
+whatever app you are building.
 
-WA OTP is that piece, extracted and made self-hostable.
-
-> [!IMPORTANT]
-> **Project Status & The Meta Verification Reality:**
-> - **Backend & Frontend are 100% complete, fully tested (61/61 automated tests passing), and production ready.**
-> - **Telegram OTP is 100% LIVE, Free, and Unmetered:** Anyone can start sending and verifying phone numbers today with zero corporate friction, zero KYC, and no credit card required.
-> - **WhatsApp Cloud API Integration is 100% complete:** The codebase supports Meta Graph API v25.0 authentication templates. However, to run a production-wide WhatsApp number for the public, Meta requires:
->   1. **Official Business Registration** (GST, Certificate of Incorporation) matching the legal entity name ([Meta Business Help 159334372093366](https://www.facebook.com/business/help/159334372093366?__tn__=%2BR)).
->   2. **International Recurring Credit Card** — Indian domestic debit cards and RuPay cards fail due to RBI recurring e-mandate regulations.
->   3. **Dedicated Clean SIM / Phone Number** not active on regular WhatsApp or WhatsApp Business mobile apps.
->   4. **Approved Business Portfolio** to unlock custom OTP authentication templates.
-> - **Plug & Play for Companies / Self-Hosters:** If you or your organization has a verified Meta Business Account, you can drop your credentials into `.env` and WhatsApp OTP goes live instantly!
-> - **Sponsors & Contributors Welcome:** We are actively seeking open-source contributors or businesses who want to sponsor a dedicated WhatsApp business line for the Indian developer community.
+Your server calls it. Your users receive the code. Every phone number, message, API key and audit row
+lives in your database.
 
 > [!NOTE]
-> **The code is open source. Your data is not.** A self-hosted instance keeps every phone number, message, and API key inside your own PocketBase. Nothing talks to us, because there is no "us" in the loop — see [Privacy](#privacy).
+> **Free & Open Source Forever (AGPL-3.0)**
+> This software is 100% free and open-source forever. There are no paid enterprise editions, no paywalled features, no SaaS subscriptions, and no vendor lock-in. You own your code, run your own containers, and keep all your user data completely under your control.
 
-## Contents
+> [!IMPORTANT]
+> **This project provides the software only. It does not provide WhatsApp messaging infrastructure, WhatsApp Business accounts, Meta credentials, phone numbers, hosting, or message credits.**
 
-- [What you get](#what-you-get)
-- [Architecture](#architecture)
-- [The two channels](#the-two-channels)
-- [Self-hosting](#self-hosting)
-- [API reference](#api-reference)
-- [Project layout](#project-layout)
-- [Privacy](#privacy)
-- [Contributing](#contributing)
-- [Security](#security)
-- [License](#license)
+That sentence is the whole business model, so it is worth being blunt about what it means:
 
-## What you get
+- There is **no hosted version of this**. Nobody operates a wa-otp service for you to sign up to.
+- There is **no shared WhatsApp number, bot, or Meta account.** The code contains none, and there is no
+  code path that could reach one.
+- There is **nothing to pay this project.** There is also nothing to pay for the software — the licence
+  is free and there is no billing code in the repository.
+- **WhatsApp messaging itself is not free.** Meta charges for WhatsApp Business messages. That is a
+  commercial relationship between you and Meta, and this project has no part in it.
+- Running this costs whatever your server and your Meta usage cost. For a small app that is often close
+  to nothing; it is not zero by definition, and this README will not pretend otherwise.
 
-Two endpoints. That is the whole integration.
+## The eleven questions
+
+### 1. What do I actually get?
+
+Source code, and a Docker Compose file that starts the whole thing. The API (`/v1/otp/send`,
+`/v1/otp/verify`), a PocketBase instance for data and the operator back office, and a Next.js dashboard
+you use to see what your installation is doing.
+
+### 2. Do I need my own WhatsApp Business account?
+
+**Yes — for WhatsApp.** There is no way around this, and anything claiming otherwise is misleading you
+about how Meta works. WhatsApp Business messages can only be sent by a Meta Business Account that owns
+the sending phone number and an approved message template. That account must be **yours**: the app reads
+your credentials from your environment and calls Meta as you.
+
+Full walkthrough: [`docs/meta-setup.md`](docs/meta-setup.md).
+
+### 3. Is there a channel that doesn't need Meta?
+
+**Yes — Telegram.** A Telegram bot needs one token from `@BotFather`, no business verification, no
+payment method, and no approval process. The trade-off is that a Telegram bot can only message someone
+who has started it once, so a first-time send returns a one-tap link instead of the code (see
+[the link flow](#the-telegram-link-flow)). If you want to evaluate this software today without touching
+Meta at all, start with Telegram.
+
+### 4. Does WhatsApp messaging cost money?
+
+**Yes.** Meta bills for WhatsApp Business messages on its own schedule and its own rates, and it decides
+those, not this project. Read [Meta's pricing](https://developers.facebook.com/docs/whatsapp/pricing)
+before you plan a launch. This project does not resell messaging, bundle credits, or intermediate
+payments in any way — you pay Meta directly, if Meta charges you.
+
+### 5. What do I need to run it?
+
+A machine that stays on and can run Docker — a small VPS, a spare box at home, a NAS. Plus two
+hostnames on a domain you control if you want HTTPS (one for the API, one for PocketBase). No Postgres,
+no Redis, no queue, no object storage: PocketBase embeds its own SQLite database and the API holds its
+state in-process.
+
+### 6. Anything I have to sign up for with *you*?
+
+**No.** There is no account with this project, no API key issued by this project, no licence check, no
+usage reporting, and no service of ours in the request path. There is no author-owned server for the
+software to depend on, by design — see
+[question 11](#11-what-happens-if-this-repository-or-its-authors-disappear).
+
+### 7. Where does my data live?
+
+In your PocketBase instance, on your disk, in `pb_data/`. Phone numbers, message audit rows, API key
+hashes, linked Telegram accounts, and your settings. Nothing is sent anywhere except to the provider you
+configured (Meta and/or Telegram) and back to your own dashboard, which talks to your own API.
+
+### 8. Does it phone home? Is there telemetry?
+
+**None.** No analytics, no crash reporting, no version check, no "anonymous usage statistics", no
+licence call. The dashboard ships with Sentry **inert** — no DSN is compiled in and nothing initialises
+it. A default build reports to nowhere. If you want error reporting you can point it at **your own**
+Sentry project.
+
+### 9. Is it secure?
+
+The security-relevant properties are documented and each one is tied to where it is implemented — see
+[`SECURITY.md`](SECURITY.md) and the [security notes](#security) below. What is true: OTP codes and API
+keys are stored as SHA-256 hashes, never plaintext; codes are generated with a CSPRNG; codes are
+single-use and attempt-limited; the Meta token is encrypted at rest with Fernet; the API is
+rate-limited per key, per IP and per phone number; and no secret is ever logged or returned in a
+response.
+
+What is equally true: **you are the operator, so you own the remaining risk.** Terminate TLS, keep your
+`.env` off version control, back up `pb_data/`, and keep PocketBase off the public internet.
+
+### 10. Can I use it commercially?
+
+**Yes.** AGPL-3.0-or-later. Running it for paying customers is fine and carries no obligation to publish
+anything, as long as you have not modified it. Details — including the one case that does trigger
+§13 — are in [License](#license).
+
+### 11. What happens if this repository or its authors disappear?
+
+**Nothing breaks.** This is a hard requirement of the design, and here is why it holds:
+
+- No hostname, token, or account belonging to the authors appears in the code as a **default or a
+  fallback** — nothing that you could inherit by forgetting to configure it. Every example URL in the
+  shipped configuration is `localhost` or `yourdomain.com`, and site-wide values (`sitemap.xml`,
+  `robots.txt`, canonical and OpenGraph URLs) resolve from `NEXT_PUBLIC_APP_URL` with a `localhost`
+  fallback, so a half-configured install points at itself rather than at somebody else's domain.
+- The one optional third-party link the product can render — a disposable-inbox prompt on the login
+  screen — is **empty unless you set `NEXT_PUBLIC_TEMP_MAIL_URL` yourself**, and every surface that
+  mentions it renders nothing when it is unset.
+- For transparency: the marketing and legal pages (`/contact`, `/privacy`, and the landing footer)
+  contain **attribution links** to the maintainer's own site and tools. They are ordinary outbound links
+  in page copy — the application never calls them, nothing depends on them, and you can delete them with
+  no functional effect.
+- There is no call to any service other than the ones you configure: your PocketBase, your Meta app, your
+  Telegram bot.
+- Nothing is fetched at boot — no licence server, no config endpoint, no telemetry endpoint.
+- The images build from this checkout. There is no prebuilt image to be delisted.
+- The one external dependency is the PocketBase release binary, which the Dockerfile downloads from
+  GitHub and verifies against the published checksums. That is PocketBase's release, not ours; a fork
+  could also vendor the binary, and the manual install path explicitly does.
+
+If this repository vanished tomorrow, your installation would keep sending OTPs, and your fork would keep
+working. Pinning your own fork is the recommended state, not a fallback.
+
+## Architecture
+
+```mermaid
+flowchart LR
+    MA["Your app<br/>(backend)"] -->|"X-Api-Key"| API
+
+    subgraph HOT["FastAPI — the hot path :8000"]
+        API["/v1/otp/send<br/>/v1/otp/verify"]
+    end
+
+    API -->|"your credentials<br/>auth template"| META["Meta WhatsApp<br/>Cloud API"]
+    API -->|"your bot token<br/>sendMessage"| TG["Telegram<br/>Bot API"]
+
+    TG -.->|"contact share<br/>/telegram/webhook"| API
+    META -.->|"delivery status<br/>/webhooks/whatsapp"| API
+
+    API -->|"superuser REST<br/>keys · codes · ledger"| PB[("PocketBase :8090<br/>your data")]
+    PB -->|"admin UI<br/>= back office"| OP["You<br/>(operator)"]
+    DASH["Next.js dashboard<br/>+ public site"] -->|"login · keys · usage"| PB
+    DASH -->|"key mgmt · OTP tester"| API
+```
+
+FastAPI owns every decision. PocketBase is storage plus a back office.
+
+- **PocketBase is never exposed to your customers.** Only FastAPI (authenticated as a superuser) and
+  your own browser ever reach it. A leaked API key can spend your send quota; it cannot read your
+  database.
+- **All quota, throttle and limit logic lives in FastAPI**, so failures are typed HTTP errors you can
+  handle, not opaque database behaviour.
+- **PocketBase earns its place as the back office.** Its admin UI is a complete operator view on day
+  one — every send, every failure, every audit row.
+- **Limits are data, not code.** A single `settings` row holds the send cap, throttle, TTL, attempt
+  count and rate limits. Change them in the admin UI; no redeploy.
+
+## Install
+
+### Docker Compose (recommended)
+
+Three services — the API, PocketBase, and the dashboard — plus a named volume for your data.
+
+```bash
+# Clone the repository (use -b feat/self-host to test this self-hosted branch):
+git clone -b feat/self-host https://github.com/Luckyyaduvanshiofficial/wa-otp.git wa-otp
+cd wa-otp
+cp .env.example .env
+```
+
+Open `.env` and set, at minimum:
+
+| Variable | What it is |
+|---|---|
+| `APP_ENV` | `production` on a real install — this turns on the fail-closed checks below |
+| `PB_SUPERUSER_EMAIL` / `PB_SUPERUSER_PASSWORD` | the PocketBase superuser; the entrypoint creates it on first boot |
+| `SECRET_KEY` | a long random string you generate |
+| `WAOTP_FERNET_KEY` | encrypts the Meta token at rest. Generate with the command in the file's header |
+| `APP_URL` | the public HTTPS URL of your API. Your webhook URL is derived from it |
+| `DASHBOARD_ORIGIN` | the exact origin of your dashboard — no trailing slash |
+| `META_*` | your Meta credentials, or leave blank for Telegram-only |
+
+Then:
+
+```bash
+docker compose up -d
+
+# Create your operator account — there is no public signup
+docker compose exec api python scripts/create_admin.py you@example.com
+```
+
+Open the dashboard, sign in, create an API key for your app, and follow
+`/dashboard/onboarding` — a seven-step checklist that mirrors the sections below and shows you, live,
+which parts of your installation are wired up.
+
+> [!IMPORTANT]
+> **Every port binds to `127.0.0.1`, not `0.0.0.0`.** Out of the box this stack is reachable from the
+> machine it runs on and from nowhere else. That is deliberate — PocketBase's admin UI is the control
+> plane for every credential this app holds, and it should not be one `docker compose up` away from the
+> public internet. To serve real users, put a TLS-terminating reverse proxy in front of the dashboard
+> and the API and leave PocketBase on loopback: see [`docs/self-hosting.md`](docs/self-hosting.md).
+> `PB_BIND`, `API_BIND` and `WEB_BIND` override each bind address if you know what you are exposing.
+
+> [!WARNING]
+> **`APP_ENV=production` makes the API refuse to boot** if `SECRET_KEY`, `WAOTP_FERNET_KEY` or
+> `PB_SUPERUSER_PASSWORD` is missing, or if mock delivery is on. That is deliberate: booting with a
+> missing signing key quietly weakens security, and a silent downgrade is worse than no boot at all.
+
+### Without Docker
+
+Run PocketBase, then the API, then the dashboard. Full instructions, including the systemd units and
+the reverse-proxy config: [`docs/self-hosting.md`](docs/self-hosting.md).
+
+The short version:
+
+```bash
+# 1. PocketBase — download the v0.40.x binary, do not float the version
+cd backend/pocketbase
+./pocketbase superuser upsert you@local 'a-strong-password'
+./pocketbase serve --http=127.0.0.1:8090   # admin UI at http://127.0.0.1:8090/_/
+
+# 2. API
+cd backend
+python3 -m venv .venv && .venv/bin/pip install -r requirements-dev.txt
+cp .env.example .env                       # then fill it in
+.venv/bin/uvicorn app.main:app --port 8000
+.venv/bin/python scripts/create_admin.py you@example.com
+
+# 3. Dashboard (optional — the API works without it)
+cd frontend && bun install && cp .env.local.example .env.local && bun dev
+```
+
+> [!TIP]
+> **`WAOTP_MOCK_DELIVERY=1` is the fastest way to see the whole thing work.**
+>
+> It fakes provider delivery while keeping **every database row real** — the full send → verify → quota
+> → throttle → audit flow runs with no Meta account, no Telegram bot, and no credentials of any kind.
+> You get an honest end-to-end integration test with zero setup.
+>
+> It must be `0` or absent in production, and the production checks above enforce that.
+
+### Local TLS certificates
+
+Neither the dashboard nor PocketBase should be served over plain HTTP on a real install. PocketBase's
+admin UI is the control plane for every credential this app holds. Put both behind a reverse proxy you
+manage — Caddy with automatic certificates is the least work — and terminate TLS there.
+
+## Connecting your WhatsApp account
+
+Once, per installation. The full walkthrough with the exact clicks is in
+[`docs/meta-setup.md`](docs/meta-setup.md). What you are doing:
+
+1. Create a **Meta app** of type Business, and add the WhatsApp product.
+2. Create or connect a **WhatsApp Business Account** and register a **phone number** that is not active
+   on the WhatsApp consumer app.
+3. Create an **authentication template** — the code-delivery message. It must be an
+   *authentication* category template, which requires an approved business portfolio.
+4. Generate a **permanent access token** for a system user with `whatsapp_business_messaging`.
+5. Put the phone number ID, WABA ID, token and template name in `backend/.env`, and set
+   `META_VERIFY_TOKEN` to a random string you choose.
+6. Register your webhook. Your URL is:
+
+   ```
+   {APP_URL}/webhooks/whatsapp
+   ```
+
+   Subscribe to the `messages` field. Meta calls `GET` on that URL once to verify it, echoing back the
+   verify token you set in step 5.
+7. Set `META_APP_SECRET` so inbound webhook calls are signature-checked. This is **required in
+   production** whenever WhatsApp credentials are set: the app refuses to boot without it. Left empty
+   in development, signature validation is skipped — and `/health/ready` reports that rather than
+   hiding it.
+
+Until your number and template are approved, use Meta's **test number**: it delivers only to
+allow-listed recipients, which is a useful sandbox rather than a limitation.
+
+## Operating it
+
+### Health endpoints
+
+Two endpoints, answering two different questions. Point your uptime monitor at the first one.
+
+| Endpoint | Question | Behaviour |
+|---|---|---|
+| `GET /health` | Is the process alive? | `200` always. Touches no dependency, so it cannot flap when your database is briefly busy |
+| `GET /health/ready` | Can this installation actually deliver an OTP? | `200` when PocketBase is reachable; `503` otherwise. Reports provider configuration state |
+
+`/health/ready` reports **which** environment variables are missing, by name, and never their values.
+
+```json
+{
+  "ok": true,
+  "status": "ready",
+  "pocketbase": true,
+  "whatsapp": { "configured": true, "detail": "credentials look well-formed", "missing": [] },
+  "telegram": { "configured": false, "detail": "no bot token configured — Telegram channel unavailable" },
+  "webhook": { "verify_token_configured": true, "signature_check_enabled": true },
+  "mock_delivery": false
+}
+```
+
+`mock_delivery` is reported here on purpose: an installation that fakes delivery while believing it is
+live is the single most dangerous state this software can be in, so it never hides it.
+
+`GET /v1/health` is a deprecated alias for `/health/ready`, kept for monitors written against the
+original behaviour.
+
+### The two channels
+
+| | WhatsApp | Telegram |
+|---|---|---|
+| **Who pays** | You pay Meta, at Meta's rates | Nobody — the Bot API has no message quota |
+| **Reach** | Universal; works for anyone with a phone | Requires the user to start your bot once |
+| **Setup** | Meta app, WABA, approved number, approved template | One token from `@BotFather` |
+| **Good for** | Non-technical users, general audiences | Low-friction onboarding, developer audiences, testing |
+
+The two channels share the OTP logic, the audit log and the throttles. Only delivery differs.
+
+### Limits, and where to change them
+
+Every number below is a default in a single PocketBase `settings` row. Edit it in the admin UI —
+there is no redeploy, and `backend/.env` only supplies fallbacks for values the row has not set.
+
+| Control | Default |
+|---|---|
+| Monthly WhatsApp sends for this installation (`0` = unlimited) | 500 |
+| OTPs per phone number per hour (both channels) | 5 |
+| Minimum gap between two sends to one number | 0 s |
+| Code lifetime | 300 s |
+| Verification attempts per code | 3 |
+| Requests per minute per API key | 10 |
+| Requests per minute per client IP | 30 |
+| Active API keys per operator | 5 |
+
+Five semantics that trip people up, so they are worth reading twice:
+
+- The monthly cap counts **WhatsApp sends the provider accepted**. Telegram is never metered
+  against it.
+- **A send the provider rejected never consumes the cap.** It is still logged with `status=failed`.
+- Once the provider accepts a message it stays counted, even if a later status callback reports it
+  failed. Usage has to be append-only to work as a spend guard — a counter that drops when messages
+  succeed is not a spending limit.
+- Both the per-phone throttle and the per-key rate limit apply to **both** channels. The per-phone
+  throttle exists to stop someone burning your quota on one victim's number, and that risk is identical
+  on Telegram.
+- The cap is a **safety valve against a runaway integration or a stolen key**, not a pricing tier. Set it
+  to `0` if you do not want it.
+
+`TRUST_PROXY_HEADERS` decides whether the per-IP limiter believes `X-Forwarded-For`. Leave it off unless
+a reverse proxy you control sits in front of the API. When it is on, the **right-most** entry in the
+header is used — the one your proxy appended — and it must parse as an IP address; anything else falls
+back to the socket peer. Reading the left-most entry instead would let a client forge a prefix and mint
+itself a fresh rate-limit bucket per request.
+
+### Keeping secrets and personal data out of logs
+
+Tokens, API keys, OTP codes, `Authorization` headers and webhook signatures are never logged, at any log
+level, in any environment. Phone numbers — the only end-user personal data this service handles — are
+written masked (length plus the last two digits), which is enough to correlate two lines during an
+incident and not enough to identify anyone. Error responses never echo raw input back. This is a property
+of the code, not a configuration option — see [`SECURITY.md`](SECURITY.md) for the specifics.
+
+Every response carries an **`X-Request-Id`** header, and the failure paths that need manual
+reconciliation log the same value. Send one in and it is reused if it is a plain short token; anything
+else is replaced with a generated id, because an id you choose is also an id that goes into log lines and
+response headers. Quote it when reporting a problem.
+
+## API reference
+
+Base path `/v1`. OTP routes authenticate with `X-Api-Key`; dashboard routes use
+`Authorization: Bearer <PocketBase user token>`.
+
+| Method | Path | Auth | Purpose |
+|---|---|---|---|
+| `POST` | `/v1/otp/send` | API key | Send a code. Optional `Idempotency-Key` header — replays are deduped for the code's lifetime |
+| `POST` | `/v1/otp/verify` | API key | Verify a code. Single-use |
+| `GET` | `/v1/otp/usage` | API key | This month's send count against the cap |
+| `GET` `POST` | `/v1/keys` | PB token | List masked keys / issue one (`201`, plaintext shown **once**) |
+| `POST` | `/v1/keys/regenerate` | PB token | Deactivate the old key, issue a new one |
+| `DELETE` | `/v1/keys/{id}` | PB token | Retire a key (soft delete) |
+| `GET` | `/v1/usage` | PB token | Dashboard usage view |
+| `POST` | `/telegram/webhook` | secret header | `/start` + contact share → links the number |
+| `GET` `POST` | `/webhooks/whatsapp` | verify token / signature | Meta verification handshake and delivery-status callbacks |
+| `GET` | `/health` | — | Liveness. No dependency |
+| `GET` | `/health/ready` | — | Readiness: PocketBase + provider configuration |
+
+`POST /v1/keys/deactivate` is a deprecated alias of `DELETE /v1/keys/{id}`, kept for existing clients.
+
+### Send and verify
 
 ```bash
 # 1. Send a code
-curl -X POST https://api.example.in/v1/otp/send \
+curl -X POST https://api.example.com/v1/otp/send \
   -H 'X-Api-Key: YOUR_API_KEY' \
   -H 'Content-Type: application/json' \
   -d '{"to": "919876543210", "channel": "whatsapp"}'
@@ -64,20 +427,19 @@ curl -X POST https://api.example.in/v1/otp/send \
 ```json
 {
   "ok": true,
-  "mode": "platform",
   "channel": "whatsapp",
   "request_id": "req_8f2c1a",
-  "wa_message_id": "wamid.HBgM...",
+  "message_id": "wamid.HBgM...",
   "expires_in": 300,
-  "free_used": 42,
-  "free_limit": 500,
+  "used": 42,
+  "limit": 500,
   "reset_utc": "2026-10-01T00:00:00Z"
 }
 ```
 
 ```bash
 # 2. Check the code the user typed in
-curl -X POST https://api.example.in/v1/otp/verify \
+curl -X POST https://api.example.com/v1/otp/verify \
   -H 'X-Api-Key: YOUR_API_KEY' \
   -H 'Content-Type: application/json' \
   -d '{"to": "919876543210", "code": "123456"}'
@@ -87,184 +449,11 @@ curl -X POST https://api.example.in/v1/otp/verify \
 { "ok": true, "verified": true }
 ```
 
-The code is generated for you unless you pass your own. It lives 5 minutes, survives 3 wrong guesses, and is single-use. Your server calls this API — never the browser (see [Security](#security)).
+The code is generated for you unless you pass your own. It lives for `expires_in` seconds, survives three
+wrong guesses, and is single-use. **The response never contains the code** — the whole point is that it
+reaches the user's phone and nowhere else. Call this API from your server, never from a browser.
 
-## Architecture
-
-```mermaid
-flowchart LR
-    MA["Your mini app<br/>(backend)"] -->|"X-Api-Key"| API
-
-    subgraph HOT["FastAPI — the hot path :8000"]
-        API["/v1/otp/send<br/>/v1/otp/verify"]
-    end
-
-    API -->|"auth template"| META["Meta WhatsApp<br/>Cloud API"]
-    API -->|"sendMessage"| TG["Telegram<br/>Bot API"]
-    TG -.->|"contact share<br/>/telegram/webhook"| API
-
-    API -->|"superuser REST<br/>read keys · write ledger"| PB[("PocketBase :8090<br/>control plane")]
-
-    PB -->|"admin UI<br/>= back office"| OP["Operator<br/>(you)"]
-    DASH["Next.js dashboard<br/>+ public site"] -->|"login · keys · usage"| PB
-    DASH -->|"key mgmt · OTP tester"| API
-```
-
-FastAPI owns every decision. PocketBase is storage plus a back office.
-
-- **PocketBase is never exposed to customers.** It is bound to localhost (or a firewalled port) and only FastAPI — authenticated as a superuser — and your own browser ever reach it. A leaked API key can send OTPs; it cannot read the database.
-- **All quota, throttle, and limit logic lives in FastAPI**, so the failure modes are typed HTTP errors you can actually handle, not opaque JSVM behaviour.
-- **PocketBase earns its place as the back office.** Its admin UI is your operator dashboard on day one — every send, every failure, every ledger row, with no code written for it.
-- **Limits are data, not code.** The single `settings` row holds the quota, throttle, TTL, attempt count, and rate limits. Change them in the admin UI; no redeploy.
-
-## The two channels
-
-| | WhatsApp | Telegram |
-|---|---|---|
-| **Cost** | 500 delivered OTPs/month free | **Unlimited, ₹0 forever** |
-| **Reach** | Universal — works for anyone with a phone | Requires the user to start the bot once |
-| **Setup** | Meta developer app + `verification_code` template | `@BotFather` and one webhook call |
-| **Good for** | Everyone, especially non-technical users | Testing, developer audiences, high-volume flows |
-
-The Telegram channel is what makes the free tier honest. The Bot API has no message quota, so it costs the operator nothing no matter how much it is used. That is the cost valve that lets WhatsApp stay free for the people who need it.
-
-### Quota semantics
-
-These trip people up, so they are worth reading twice:
-
-- The monthly quota counts **WhatsApp-delivered sends only**. Telegram never consumes it.
-- **Failed sends never consume quota.** They are logged with `status=failed` so you still have the audit trail.
-- The **per-phone hourly throttle applies to both channels.** It exists to stop someone burning your quota on one victim's number, and that risk is identical on Telegram.
-- The **per-key rate limit applies to both channels** too.
-
-Default limits, all editable in the `settings` row:
-
-| Control | Default |
-|---|---|
-| WhatsApp OTPs / developer / month | 500 |
-| OTPs / phone / hour (both channels) | 5 |
-| Code TTL | 300 s |
-| Verification attempts per code | 3 |
-| Requests / minute / API key | 10 |
-| Active API keys / owner | 5 |
-
-## Self-hosting
-
-Two processes: the FastAPI backend and PocketBase. The Next.js dashboard is optional — the API works without it.
-
-### 1. PocketBase
-
-WA OTP pins **PocketBase v0.40.x**. The JSVM migration uses the v0.40 collection and field API, and declares `created`/`updated` as explicit `autodate` fields — without that, indexes on those fields fail to build. Do not upgrade past v0.40.x without updating the migration.
-
-The binary is **not** in this repository (it is ~40 MB and platform-specific). Download the v0.40.x release for your platform from [pocketbase/pocketbase/releases](https://github.com/pocketbase/pocketbase/releases) and place it at `backend/pocketbase/pocketbase`.
-
-```bash
-cd backend/pocketbase
-./pocketbase superuser upsert you@local devpass123
-./pocketbase serve --http=127.0.0.1:8090   # admin UI at http://127.0.0.1:8090/_/
-```
-
-### 2. Backend
-
-```bash
-cd backend
-
-python3 -m venv .venv
-.venv/bin/pip install -r requirements-dev.txt
-
-cp .env.example .env
-# Generate the key that encrypts your Meta token at rest:
-.venv/bin/python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"
-
-.venv/bin/uvicorn app.main:app --port 8000   # OpenAPI docs at http://127.0.0.1:8000/docs
-
-# Create a developer account and an API key
-.venv/bin/python scripts/seed_dev.py dev@waotp.local devpass123
-```
-
-> [!TIP]
-> **`WAOTP_MOCK_DELIVERY=1` is the best thing about developing against this.**
->
-> It fakes provider delivery while keeping **every database row real** — the whole send → verify → quota → throttle → ledger flow runs with no Meta account, no Telegram bot, and no credentials of any kind. You get a complete, honest integration test with zero setup.
->
-> It must be `0` or absent in production.
-
-Set `DASHBOARD_ORIGIN` to your dashboard's origin (e.g. `http://localhost:3000`). Without it, CORS blocks every browser call to the API — and the failure looks like a dead backend rather than a config mistake.
-
-### 3. Dashboard (optional)
-
-```bash
-cd frontend
-
-bun install
-cp .env.local.example .env.local   # fill in the PocketBase and API URLs
-bun dev                            # http://localhost:3000
-```
-
-`NEXT_PUBLIC_PB_COLLECTIONS_PREFIX` must match `WAOTP_PB_COLLECTIONS_PREFIX` on the backend.
-
-### Sharing one PocketBase across projects
-
-If you already run PocketBase for something else, you do not need a second instance. Set a prefix and WA OTP namespaces itself:
-
-```bash
-WAOTP_PB_COLLECTIONS_PREFIX=waotp_          # backend/.env
-NEXT_PUBLIC_PB_COLLECTIONS_PREFIX=waotp_    # frontend/.env.local
-```
-
-With a prefix set, collections become `waotp_api_keys`, `waotp_messages`, and so on — **and WA OTP creates its own `waotp_users` auth collection instead of touching the stock `users` collection.** Developer accounts, tokens, and data stay completely separate from the other project on the instance.
-
-> [!WARNING]
-> Never leave the prefix empty when pointing at a shared instance. An unprefixed build addresses the stock `users` and `api_keys` collections — which belong to the other project.
-
-Provision it:
-
-```bash
-.venv/bin/python scripts/provision_pb.py \
-    --url https://pb.example.com \
-    --email you@example.com --password '***'
-```
-
-The script is idempotent by design: **existing collections are never modified.** Running it twice is safe. Keep it that way.
-
-For a dedicated single-app deployment, leave the prefix empty — the JS migration creates logical collection names and extends the stock `users` collection with `plan` and `status`.
-
-### Going live
-
-Secrets are read from the PocketBase `settings` row, not from the environment, so going live needs no redeploy.
-
-1. **Meta:** create an app → WhatsApp → test number + token, then create the `verification_code` authentication template (en_US, `{{1}}` in the body plus a Copy Code button). While on the test number, only your allow-listed recipients receive anything — a natural sandbox.
-2. **Encrypt the token into `settings`:**
-   ```bash
-   .venv/bin/python -c "from app.core.security import encrypt_secret; print(encrypt_secret('YOUR_META_TOKEN'))"
-   ```
-   Paste the result into `meta_token_enc` in the admin UI and fill in `meta_phone_number_id`.
-3. **Telegram:** create the bot with `@BotFather`, store `tg_bot_token` and `tg_bot_username` in `settings`, then:
-   ```bash
-   .venv/bin/python scripts/set_telegram_webhook.py https://api.example.in
-   ```
-4. Set `WAOTP_MOCK_DELIVERY=0`.
-
-> [!IMPORTANT]
-> **Run a single uvicorn worker.** A per-key `asyncio` lock wraps each send (quota check → provider delivery → ledger writes) and a per-(owner, phone) lock wraps each verify. Those locks are what stop a concurrent double-spend of quota and duplicate verification of one code. Adding a second worker silently breaks both. If you need horizontal scale, move the locking to a shared store first.
-
-## API reference
-
-Base path `/v1`. OTP routes authenticate with `X-Api-Key`; dashboard routes use `Authorization: Bearer <PocketBase user token>`.
-
-| Method | Path | Auth | Purpose |
-|---|---|---|---|
-| `POST` | `/v1/otp/send` | API key | Send a code. Accepts an optional `Idempotency-Key` header — replays are deduped for the code's lifetime |
-| `POST` | `/v1/otp/verify` | API key | Verify a code. Single-use |
-| `GET` | `/v1/otp/usage` | API key | `{plan, used, limit, reset_utc}` |
-| `GET` `POST` | `/v1/keys` | PB token | List masked keys / issue one (`201`, plaintext shown **once**) |
-| `POST` | `/v1/keys/regenerate` | PB token | Deactivate the old key, issue a new one |
-| `DELETE` | `/v1/keys/{id}` | PB token | Retire a key (soft delete) |
-| `GET` | `/v1/usage` | PB token | Dashboard usage view |
-| `POST` | `/telegram/webhook` | secret header | `/start` + contact share → `tg_links` |
-| `GET` | `/v1/health` | — | `200` when PocketBase is reachable, `503` otherwise |
-
-`POST /v1/keys/deactivate` is a deprecated alias of `DELETE /v1/keys/{id}`, kept for existing clients.
+`used` and `limit` describe **your own installation's** cap. `limit` is `0` when you have set no cap.
 
 ### Errors
 
@@ -272,9 +461,9 @@ Every error is `{"ok": false, "error": "<code>", ...}`.
 
 | Status | Codes |
 |---|---|
-| `400` | bad input |
-| `401` | bad key or token |
-| `403` | key disabled |
+| `400` | `invalid_request` |
+| `401` | `invalid_api_key`, `invalid_user_token` |
+| `403` | `key_disabled` |
 | `404` | `key_not_found` |
 | `409` | `user_not_linked` (carries `link_url`), `key_limit_reached` |
 | `429` | `quota_exceeded`, `phone_throttled`, `rate_limited` |
@@ -282,76 +471,120 @@ Every error is `{"ok": false, "error": "<code>", ...}`.
 | `503` | `not_configured`, `upstream_unavailable` |
 | `500` | `internal_error` |
 
-`429` responses carry `Retry-After`: `60` for the per-key rate limit, `3600` for the per-phone throttle, or the seconds until the monthly reset for `quota_exceeded`. Validation errors return a whitelisted `detail: [{loc, msg, type}]` — raw input is never echoed back.
+`429` responses carry `Retry-After`: `60` for the per-key rate limit, `3600` for the per-phone throttle,
+or the seconds until the monthly reset for `quota_exceeded`. Validation errors return a whitelisted
+`detail: [{loc, msg, type}]` — raw input is never echoed back.
+
+Full integrator reference: [`backend/docs/api.md`](backend/docs/api.md). Error bodies are declared on
+every route in the OpenAPI spec, served at `/docs`.
 
 <details>
-<summary><strong>Telegram link flow</strong> (why Telegram needs one extra step)</summary>
+<summary><strong>The Telegram link flow</strong> (why Telegram needs one extra step)</summary>
 
-Telegram bots cannot message someone who has never started them. So the first Telegram send for an unlinked number returns a deep link instead of a message:
+Telegram bots cannot message someone who has never started them. So the first Telegram send for an
+unlinked number returns a deep link instead of a message:
 
-1. `/v1/otp/send` with `channel: "telegram"` → `409 {"error": "user_not_linked", "link_url": "https://t.me/<bot>?start=<signed token>"}`
+1. `/v1/otp/send` with `channel: "telegram"` → `409 {"error": "user_not_linked", "link_url": "https://t.me/<your-bot>?start=<signed token>"}`
 2. Your app shows a **Connect Telegram** button opening that URL.
-3. The bot replies with a *share contact* keyboard.
-4. The shared contact is accepted **only if `contact.user_id == from.id`** — otherwise anyone could share a friend's number and receive their OTPs.
-5. The link is stored in `tg_links`; retry the send and the OTP arrives on Telegram.
+3. Your bot replies with a *share contact* keyboard.
+4. The shared contact is accepted **only if `contact.user_id == from.id`** — otherwise anyone could share
+   a friend's number and receive their OTPs.
+5. The link is stored, and the retried send delivers the OTP on Telegram.
 
-Linking is platform-wide: a user links once and every developer's Telegram OTP reaches them.
+The link is per-installation: it is stored in your database, tied to your bot, and shared with nobody.
 
 </details>
 
 <details>
-<summary><strong>Known limitation: ledger write after successful delivery</strong></summary>
+<summary><strong>The one failure that is cached: ledger write after successful delivery</strong></summary>
 
-If the PocketBase ledger write fails *after* Meta accepted the message, the API returns `502 delivery_failed` with `retryable: false` and logs the `wa_message_id` for manual reconciliation. An automatic retry may double-send. Clients that care about this can send an `Idempotency-Key` header to make retries safe.
+If the PocketBase write fails *after* Meta has accepted the message, the API returns
+`502 delivery_failed` with `retryable: false` and logs the provider message ID for manual
+reconciliation. This cannot be made atomic — the provider call already happened — so instead it is
+made **replayable**: the error is cached under your `Idempotency-Key`, and a retry carrying that
+same key gets the identical `502` back instead of putting a second code on the user's phone.
+
+Without an `Idempotency-Key` there is nothing to key the replay on, so a retry *will* double-send.
+**Send an `Idempotency-Key` on every send** and retries become safe in every failure mode.
+
+A transport error during those writes (PocketBase unreachable, connection reset) is treated the same
+way — it is a delivered message whose bookkeeping failed, not a `503`.
 
 </details>
 
-Full integrator reference: [`backend/docs/api.md`](backend/docs/api.md). Error bodies are declared on every route in the OpenAPI spec, served at `/docs`.
+## Development
+
+```bash
+# Backend — full suite, no network, no credentials
+cd backend
+.venv/bin/pip install -r requirements-dev.txt
+.venv/bin/pytest -q
+
+# Frontend
+cd frontend
+bun run typecheck && bun run lint && bun run build
+```
+
+The backend suite runs against an in-memory PocketBase stand-in (`FakePB`) with `WAOTP_MOCK_DELIVERY=1`,
+so it needs no network and no Meta or Telegram credentials. It covers the failure paths deliberately —
+expired codes, exhausted attempts, replayed idempotency keys, throttled numbers, provider rejections and
+timeouts, malformed webhook payloads and bad signatures — not only the happy path.
+
+The single-uvicorn-worker constraint is a **correctness requirement**, not tuning, and it is documented
+at the point where it matters in `backend/Dockerfile`. The per-owner and per-phone `asyncio` locks, the
+idempotency replay store, the rate limiters and the cached PocketBase superuser token are all
+process-global state. A second worker silently breaks idempotency, lets two concurrent sends pass the
+same quota check, and halves every rate limit. To scale out, move that state into a shared store first.
 
 ## Project layout
 
 ```
 backend/
   app/
-    core/        config (env) · security (sha256, Fernet, link tokens) · error types
+    core/        config (env) · security (sha256, Fernet, link tokens) · errors
+    providers/   WhatsAppProvider interface + the Meta implementation
     services/    PocketBase REST client · settings cache · quota/throttle ·
-                 otp store · Meta Cloud API · Telegram Bot API
-    routers/     otp · keys + dashboard usage · telegram webhook · health
+                 OTP store · Meta Cloud API · Telegram Bot API
+    routers/     otp · keys + dashboard usage · telegram webhook ·
+                 whatsapp webhook · health
     dependencies.py   auth · rate limiter · idempotency store · asyncio locks
-  pocketbase/    binary + pb_migrations (8 collections) + pb_data (runtime, gitignored)
-  scripts/       seed_dev.py · provision_pb.py · set_telegram_webhook.py
+  pocketbase/    pb_migrations + pb_data (runtime, gitignored) + Dockerfile
+  scripts/       create_admin.py · set_telegram_webhook.py · provision_pb.py
   tests/         pytest suite (in-memory FakePB, mock delivery)
   docs/api.md    integrator API reference
 
 frontend/
-  src/app/       (auth) · dashboard (overview, keys, tester, settings) · docs · landing
-  src/features/  feature modules — auth, dashboard, keys, tester
+  src/app/       (auth) · dashboard (setup, overview, keys, tester, settings) · docs · landing
+  src/features/  feature modules — auth, onboarding, dashboard, keys, tester, settings
   src/components/  shadcn/ui + field components + icon registry
   src/lib/       PocketBase client · API client · form hook
 
-PRD.md           the canonical specification — read this first
+docs/
+  meta-setup.md     your WhatsApp Business account, step by step
+  self-hosting.md   Docker, reverse proxy, systemd, backups, upgrades
 ```
-
-[`PRD.md`](PRD.md) is the source of truth for architecture, data model, API semantics, and limits. When documentation and code disagree, PRD.md wins.
 
 ## Privacy
 
-This software does not phone home. There is no telemetry, no analytics, no license check, and no call to any server other than the ones you configure. A self-hosted instance sends OTPs through *your* Meta and Telegram credentials and stores everything in *your* PocketBase.
+This software does not phone home. No telemetry, no analytics, no licence check, and no network call to
+anyone other than the services you configure. Specifically:
 
-OTP codes and API keys are stored as sha256 hashes, never in plaintext. API keys are displayed exactly once, at creation.
-
-The dashboard ships with Sentry **inert** — no DSN is configured and nothing initialises it — so a default build reports to nowhere. Turn it on only if you want it.
-
-## Contributing
-
-Issues and pull requests are welcome — see [`CONTRIBUTING.md`](CONTRIBUTING.md). If you are planning anything non-trivial, please read `PRD.md` first and open an issue; it will save us both a rewrite.
+- There is **no author-operated endpoint** anywhere in the code, including as a default or a fallback.
+- OTP codes and API keys are stored as SHA-256 hashes, never plaintext. An API key is displayed exactly
+  once, when it is created.
+- Sentry ships inert. Nothing initialises it in a default build.
+- Your `.env` stays on your machine. The repository contains examples with empty values, never real
+  credentials.
 
 ## Security
 
-Please do **not** open a public issue for a vulnerability. See [`SECURITY.md`](SECURITY.md) for the private reporting channel and an operator hardening checklist.
+Please do **not** open a public issue for a vulnerability. See [`SECURITY.md`](SECURITY.md) for the
+private reporting channel and the operator hardening checklist. The security properties above are
+documented there with the file that implements each one, so you can check them rather than trust them.
 
 > [!WARNING]
-> Never commit a `.env` file. If a secret does leak, **rotate it** — deleting the file is not enough, because git history keeps it and scrapers find it within seconds of a push.
+> Never commit a `.env` file. If a secret does leak, **rotate it** — deleting the file is not enough,
+> because git history keeps it and scrapers find it within seconds of a push.
 
 ## License
 
@@ -359,21 +592,38 @@ Please do **not** open a public issue for a vulnerability. See [`SECURITY.md`](S
 
 What that means in practice, because this is the part people get wrong:
 
-- **Self-hosting an unmodified copy carries no obligation to publish anything.** Run it privately, run it commercially, run it for your own paying customers. Modify it for your own use and keep those modifications to yourself. None of that triggers AGPL.
-- **AGPL-3.0 §13** applies only when you *modify* WA OTP **and** run the modified version as a network service for other people. Those users must be offered the modified source. See [§13, Remote Network Interaction](https://www.gnu.org/licenses/agpl-3.0.html#section13).
-- This is deliberate. It keeps WA OTP forkable and self-hostable for anyone, while preventing a closed-source hosting business from being built out of other people's contributions.
-- **No open-source license grants trademark rights.** The WA OTP name and logo remain with the project; forks are welcome but should not present themselves as the official service.
+- **Self-hosting an unmodified copy carries no obligation to publish anything.** Run it privately, run it
+  commercially, run it for your own paying customers. Modify it for your own use and keep those
+  modifications to yourself. None of that triggers the AGPL.
+- **AGPL-3.0 §13** applies only when you *modify* this software **and** run the modified version as a
+  network service for other people. Those users must be offered the modified source. See
+  [§13, Remote Network Interaction](https://www.gnu.org/licenses/agpl-3.0.html#section13).
+- This is deliberate. It keeps the project forkable and self-hostable for anyone, while preventing a
+  closed-source hosting business from being built out of other people's contributions.
+- **No open-source licence grants trademark rights.** The project name and logo stay with the project;
+  forks are welcome but should not present themselves as the official service.
 
 ### Mixed licensing
 
-The frontend began from a shadcn/ui admin dashboard starter kit by [Kiranism](https://github.com/Kiranism), which is **MIT licensed**. That notice is preserved at [`frontend/LICENSE`](frontend/LICENSE) and remains in force for the portions derived from it. MIT is compatible with the AGPL, so the project as a whole is distributed under AGPL-3.0-or-later with those MIT portions intact.
+The frontend began from a shadcn/ui admin dashboard starter kit by
+[Kiranism](https://github.com/Kiranism), which is **MIT licensed**. That notice is preserved at
+[`frontend/LICENSE`](frontend/LICENSE) and remains in force for the portions derived from it. MIT is
+compatible with the AGPL, so the project as a whole is distributed under AGPL-3.0-or-later with those
+MIT portions intact.
 
 ### Acknowledgements
 
-Built on [Meta's WhatsApp Cloud API](https://developers.facebook.com/docs/whatsapp/cloud-api), the [Telegram Bot API](https://core.telegram.org/bots/api), [PocketBase](https://pocketbase.io), [FastAPI](https://fastapi.tiangolo.com), [Next.js](https://nextjs.org), and [shadcn/ui](https://ui.shadcn.com). The frontend scaffold descends from Kiranism's admin dashboard starter.
+Built on [Meta's WhatsApp Cloud API](https://developers.facebook.com/docs/whatsapp/cloud-api), the
+[Telegram Bot API](https://core.telegram.org/bots/api), [PocketBase](https://pocketbase.io),
+[FastAPI](https://fastapi.tiangolo.com), [Next.js](https://nextjs.org), and
+[shadcn/ui](https://ui.shadcn.com). The frontend scaffold descends from Kiranism's admin dashboard
+starter.
+
+The software is theirs and ours. The WhatsApp account, the phone number, the database, and the bill —
+those are yours.
 
 ---
 
 <div align="center">
-<sub>Built for the developer with a ₹50 UPI top-up and a weekend.</sub>
+<sub>send a code. check a code. keep the data.</sub>
 </div>

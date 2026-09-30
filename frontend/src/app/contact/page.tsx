@@ -3,6 +3,7 @@ import { SiteNav } from '@/features/landing/components/site-nav';
 import { SiteFooter } from '@/features/landing/components/site-footer';
 import { GITHUB_URL } from '@/features/landing/components/github-star';
 import { Icons } from '@/components/icons';
+import { SITE_URL } from '@/lib/site';
 
 export const metadata: Metadata = {
   title: 'Contact & Support — WA OTP Gateway',
@@ -11,7 +12,7 @@ export const metadata: Metadata = {
   openGraph: {
     title: 'Contact & Support — WA OTP Gateway',
     description: 'Get in touch with Lucky Yaduvanshi or explore CodaiPro developer tools.',
-    url: 'https://waotp.codaipro.com/contact',
+    url: `${SITE_URL}/contact`,
     siteName: 'WA OTP',
     type: 'website'
   }
@@ -31,8 +32,8 @@ export default function ContactPage() {
             <em>contact</em> & support.
           </h1>
           <p className='lm-lede'>
-            Have questions about integrating WA OTP, sponsorship inquiries, or suggestions for CodaiPro developer tools?
-            We&apos;re here to help.
+            Have questions about integrating WA OTP, sponsorship inquiries, or suggestions for
+            CodaiPro developer tools? We&apos;re here to help.
           </p>
         </div>
       </header>
@@ -53,9 +54,12 @@ export default function ContactPage() {
                 <span className='inline-block rounded bg-primary/10 px-2 py-0.5 text-[11px] font-mono font-semibold text-primary'>
                   Lead Maintainer
                 </span>
-                <h3 className='font-semibold text-base text-[var(--color-ink)]'>Lucky Yaduvanshi</h3>
+                <h3 className='font-semibold text-base text-[var(--color-ink)]'>
+                  Lucky Yaduvanshi
+                </h3>
                 <p className='text-xs text-[var(--color-ink-muted)] leading-relaxed'>
-                  Software engineer, systems architect, and creator of WA OTP and the CodaiPro developer tools suite.
+                  Software engineer, systems architect, and creator of WA OTP and the CodaiPro
+                  developer tools suite.
                 </p>
               </div>
               <a
@@ -75,9 +79,12 @@ export default function ContactPage() {
                 <span className='inline-block rounded bg-sky-500/10 px-2 py-0.5 text-[11px] font-mono font-semibold text-sky-600 dark:text-sky-400'>
                   Company & Ecosystem
                 </span>
-                <h3 className='font-semibold text-base text-[var(--color-ink)]'>CodaiPro Developer Tools</h3>
+                <h3 className='font-semibold text-base text-[var(--color-ink)]'>
+                  CodaiPro Developer Tools
+                </h3>
                 <p className='text-xs text-[var(--color-ink-muted)] leading-relaxed'>
-                  Free, lightning-fast utilities built for software engineers, including Temp Mail disposable inboxes.
+                  Free, lightning-fast utilities built for software engineers, including Temp Mail
+                  disposable inboxes.
                 </p>
               </div>
               <a
@@ -97,9 +104,12 @@ export default function ContactPage() {
                 <span className='inline-block rounded bg-amber-500/10 px-2 py-0.5 text-[11px] font-mono font-semibold text-amber-600 dark:text-amber-400'>
                   Open Source
                 </span>
-                <h3 className='font-semibold text-base text-[var(--color-ink)]'>GitHub Community</h3>
+                <h3 className='font-semibold text-base text-[var(--color-ink)]'>
+                  GitHub Community
+                </h3>
                 <p className='text-xs text-[var(--color-ink-muted)] leading-relaxed'>
-                  Open a discussion, report bugs, or submit pull requests directly to the open-source repository.
+                  Open a discussion, report bugs, or submit pull requests directly to the
+                  open-source repository.
                 </p>
               </div>
               <a
@@ -125,8 +135,9 @@ export default function ContactPage() {
               </h2>
             </div>
             <p className='text-xs sm:text-sm text-[var(--color-ink-muted)] leading-relaxed max-w-2xl'>
-              We are actively looking for companies or sponsors willing to sponsor a verified Meta Business line for the community,
-              allowing open-source developers to test production WhatsApp templates freely.
+              We are actively looking for companies or sponsors willing to sponsor a verified Meta
+              Business line for the community, allowing open-source developers to test production
+              WhatsApp templates freely.
             </p>
             <div>
               <a

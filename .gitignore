@@ -4,8 +4,12 @@ __pycache__/
 *.pyc
 .pytest_cache/
 
-# Secrets
-.env
+# Secrets. `*` is deliberate: a bare `.env` rule does NOT match
+# `frontend/.env.local`, which is exactly the file a Next.js contributor
+# creates first and the one most likely to hold a real token.
+.env*
+!.env.example
+!.env.local.example
 
 # PocketBase runtime data (backups are non-negotiable — see PRD §10)
 backend/pocketbase/pb_data/
@@ -32,6 +36,7 @@ graphify-out/
 # public repo. Re-installable per machine, so there is nothing to lose.
 .claude/
 .agents/
+.commandcode/
 .hallmark/
 .zcode/
 .v2c/

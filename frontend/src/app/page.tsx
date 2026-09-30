@@ -9,6 +9,7 @@ import { Ruler } from '@/features/landing/components/ruler';
 import { SiteFooter } from '@/features/landing/components/site-footer';
 import { SiteNav } from '@/features/landing/components/site-nav';
 import { Icons } from '@/components/icons';
+import { SITE_URL } from '@/lib/site';
 
 export const metadata: Metadata = {
   title: 'WA OTP — Open Source WhatsApp & Telegram OTP Gateway (FastAPI Python)',
@@ -29,7 +30,7 @@ export const metadata: Metadata = {
     title: 'WA OTP — Open Source WhatsApp & Telegram OTP Gateway (FastAPI Python)',
     description:
       'Lightning-fast open-source WhatsApp & Telegram OTP gateway built in FastAPI Python. Free unmetered Telegram delivery and Meta Cloud API integration.',
-    url: 'https://waotp.codaipro.com',
+    url: `${SITE_URL}`,
     siteName: 'WA OTP',
     type: 'website'
   },
@@ -127,7 +128,7 @@ export default function LandingPage() {
       name: 'Lucky Yaduvanshi',
       url: 'https://luckyyaduvanshi.in/'
     },
-    url: 'https://waotp.codaipro.com'
+    url: `${SITE_URL}`
   };
 
   return (
@@ -155,8 +156,9 @@ export default function LandingPage() {
           </h1>
 
           <p className='lm-lede'>
-            Lightning-fast open-source OTP gateway built with FastAPI Python. Telegram OTP is 100% live, unmetered and free.
-            WhatsApp Cloud API is fully implemented and ready to self-host or plug in with your Meta Business account.
+            Lightning-fast open-source OTP gateway built with FastAPI Python. Telegram OTP is 100%
+            live, unmetered and free. WhatsApp Cloud API is fully implemented and ready to self-host
+            or plug in with your Meta Business account.
           </p>
 
           <div className='lm-actions'>

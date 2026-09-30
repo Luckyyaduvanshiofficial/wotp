@@ -33,8 +33,8 @@ Other scripts: `bun run build`, `bun run typecheck`, `bun run lint`, `bun run fo
 
 | Variable | Default | Purpose |
 |---|---|---|
-| `NEXT_PUBLIC_PB_URL` | `https://pb.codaipro.com` | Self-hosted PocketBase (auth collection **`waotp_users`** — never `users`, that belongs to another app on the shared instance) |
-| `NEXT_PUBLIC_PB_COLLECTIONS_PREFIX` | `waotp_` | Collection namespace. **Must match `WAOTP_PB_COLLECTIONS_PREFIX` on the backend** — this prefix is what keeps the two projects on the shared instance apart |
+| `NEXT_PUBLIC_PB_URL` | `http://localhost:8090` | Self-hosted PocketBase (auth collection **`waotp_users`** — never `users`, that belongs to another app on a shared instance) |
+| `NEXT_PUBLIC_PB_COLLECTIONS_PREFIX` | `waotp_` | Collection namespace. **Must match `WAOTP_PB_COLLECTIONS_PREFIX` on the backend** — this prefix is what keeps the two projects on a shared instance apart |
 | `NEXT_PUBLIC_API_URL` | `http://localhost:8000` | FastAPI backend base URL |
 | `NEXT_PUBLIC_APP_URL` | – | Canonical origin, used as the PocketBase password-reset return address |
 | `NEXT_PUBLIC_GITHUB_REPO` | – | `owner/repo`. When set, the landing nav shows the live star count; when unset, every GitHub surface renders nothing |
@@ -47,7 +47,7 @@ restart. No secrets are needed client-side; every value above is public.
 
 | Route | Auth | What it does |
 |---|---|---|
-| `/` | public | Landing: hero, how-it-works, features, pricing, CTAs |
+| `/` | public | Landing: hero, how-it-works, architecture, self-hosting guides, CTAs |
 | `/docs` | public | Integrator API reference (rendered from `content/docs.md`, copied from `backend/docs/api.md`) with sticky TOC |
 | `/login` | public | Email/password (`authWithPassword`) + "Continue with Google" |
 | `/signup` | public | Account creation (PocketBase record create, public signup enabled) |

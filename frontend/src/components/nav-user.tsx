@@ -1,6 +1,9 @@
 'use client';
 
+import { useRouter } from 'next/navigation';
+import { toast } from 'sonner';
 import { Icons } from '@/components/icons';
+import { pb } from '@/lib/pb';
 
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import {
@@ -29,6 +32,13 @@ export function NavUser({
   };
 }) {
   const { isMobile } = useSidebar();
+  const router = useRouter();
+
+  function handleSignOut() {
+    pb.authStore.clear();
+    toast.success('Signed out');
+    router.push('/login');
+  }
 
   return (
     <SidebarMenu>
@@ -72,31 +82,29 @@ export function NavUser({
                 </div>
               </DropdownMenuLabel>
             </DropdownMenuGroup>
-            <DropdownMenuSeparator />
             <DropdownMenuGroup>
-              <DropdownMenuItem>
-                <Icons.sparkles className='mr-2 h-4 w-4' />
-                Upgrade to Pro
+              <DropdownMenuItem
+                onClick={() => router.push('/dashboard/settings')}
+                className='cursor-pointer'
+              >
+                <Icons.user className='mr-2 h-4 w-4' />
+                Settings
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                onClick={() => router.push('/dashboard/onboarding')}
+                className='cursor-pointer'
+              >
+                <Icons.badgeCheck className='mr-2 h-4 w-4' />
+                Setup Guide
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => router.push('/docs')} className='cursor-pointer'>
+                <Icons.book className='mr-2 h-4 w-4' />
+                Documentation
               </DropdownMenuItem>
             </DropdownMenuGroup>
             <DropdownMenuSeparator />
             <DropdownMenuGroup>
-              <DropdownMenuItem>
-                <Icons.circleCheck className='mr-2 h-4 w-4' />
-                Account
-              </DropdownMenuItem>
-              <DropdownMenuItem>
-                <Icons.creditCard className='mr-2 h-4 w-4' />
-                Billing
-              </DropdownMenuItem>
-              <DropdownMenuItem>
-                <Icons.notification className='mr-2 h-4 w-4' />
-                Notifications
-              </DropdownMenuItem>
-            </DropdownMenuGroup>
-            <DropdownMenuSeparator />
-            <DropdownMenuGroup>
-              <DropdownMenuItem>
+              <DropdownMenuItem onClick={handleSignOut} className='cursor-pointer text-destructive'>
                 <Icons.logout className='mr-2 h-4 w-4' />
                 Log out
               </DropdownMenuItem>

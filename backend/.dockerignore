@@ -1,0 +1,36 @@
+# Build context for the API image (backend/Dockerfile).
+#
+# The image only needs `app/` and `scripts/`, so everything else is excluded
+# both to keep the context small and to keep things out of the layer cache.
+
+# Virtualenv — hundreds of MB, and platform-specific: the image installs its
+# own Linux wheels from requirements.txt.
+.venv/
+venv/
+
+# Python bytecode and caches
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# Secrets. Excluded deliberately: the image is environment-driven and must never
+# carry credentials, and a `.env` copied into a layer would survive in the image
+# even if a later layer deleted it.
+.env
+.env.*
+
+# Tests are not part of the runtime image. Run them on the host against the venv.
+tests/
+
+# PocketBase is a separate image with its own context. This directory holds the
+# ~40 MB server binary and, on a working install, `pb_data/` — the live database.
+# Copying that into an image would bake the operator's own data (hashed API keys,
+# the encrypted Meta token) into a layer, so it is excluded twice over, here and
+# in .gitignore.
+pocketbase/
+
+# Docs and local tooling state
+*.md
+.claude/

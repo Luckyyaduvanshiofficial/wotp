@@ -1,11 +1,12 @@
 # wa otp — integration reference
 
-**api version:** 0.1.0 · **updated:** 2026-09-14
-**written for:** an ai agent doing the wiring, and the developer supervising it.
+**api version:** 0.1.0 · **updated:** 2026-09-15
+**written for:** an ai agent doing the wiring, and the operator supervising it.
 
 wa otp is a two-call otp gateway. one endpoint sends a code over whatsapp or
-telegram, a second one checks it. whatsapp gives you 500 delivered codes a month
-free; telegram is unmetered.
+telegram, a second one checks it. the installation you are calling runs on
+someone's own whatsapp business account and applies its own monthly send cap to
+whatsapp; telegram is never metered against that cap.
 
 the whole integration is two http requests. most of this page is the detail
 around them — every field, every error code, and the retry decision for each.
@@ -66,15 +67,19 @@ honoured, `retryable: false` stops the retry, and the project's checks pass.
 |---|---|---|---|
 | POST | `/v1/otp/send` | `X-Api-Key` | Deliver a code to a phone |
 | POST | `/v1/otp/verify` | `X-Api-Key` | Check the code the user typed |
-| GET | `/v1/otp/usage` | `X-Api-Key` | Your monthly quota usage |
+| GET | `/v1/otp/usage` | `X-Api-Key` | Monthly quota usage for the installation |
 | GET | `/v1/keys` | Dashboard bearer token | List your keys (masked) |
 | POST | `/v1/keys` | Dashboard bearer token | Issue a new key |
 | POST | `/v1/keys/regenerate` | Dashboard bearer token | Rotate: kill every active key, issue one new |
 | POST | `/v1/keys/deactivate` | Dashboard bearer token | Kill switch for one key |
 | GET | `/v1/usage` | Dashboard bearer token | Dashboard view of the same numbers as `/v1/otp/usage` |
-| GET | `/v1/health` | none | Uptime probe (also reports mock mode) |
+| GET | `/health` | none | Liveness probe. Touches no dependency, so it cannot flap |
+| GET | `/health/ready` | none | Readiness: store reachable + provider configuration state. `503` when the store is down |
+| GET | `/v1/health` | none | Deprecated alias of `/health/ready` |
+| GET | `/webhooks/whatsapp` | Meta verification token | Meta subscription handshake endpoint |
+| POST | `/webhooks/whatsapp` | `X-Hub-Signature-256` | Meta WhatsApp Cloud API delivery status callbacks |
 
-`POST /telegram/webhook` also exists, but telegram calls it, not you. ignore it.
+`GET / POST /webhooks/whatsapp` and `POST /telegram/webhook` are webhook endpoints called by Meta and Telegram, not by your client applications.
 
 ---
 
@@ -121,7 +126,7 @@ X-Api-Key: waotp_xxxxxxxxxxxxxxxx
 - keys resolve through a 60-second server-side cache, but regenerate and
   deactivate evict the old key immediately. old keys stop working at once, not
   after the cache window.
-- **maximum 5 active keys** per developer. a 6th attempt returns
+- **maximum 5 active keys** per owner. a 6th attempt returns
   `409 key_limit_reached` — deactivate one first.
 
 ### key management endpoints
@@ -135,7 +140,7 @@ these are dashboard routes. they take `Authorization: Bearer <dashboard token>`
 | POST | `/v1/keys` | `{"label": "..."}` optional, default `"default"`, max 50 chars | `{"api_key", "last4", "label", "id"}` — plaintext shown once |
 | POST | `/v1/keys/regenerate` | `{"label": "..."}` optional | Same shape as issue. **Deactivates every active key** (invalid immediately) and issues one fresh key |
 | POST | `/v1/keys/deactivate` | `{"id": "<key id>"}` | `{"ok": true}`. Unknown or foreign ids get `404 key_not_found` |
-| GET | `/v1/usage` | — | `{"plan", "used", "limit", "reset_utc"}` — same numbers as `/v1/otp/usage` |
+| GET | `/v1/usage` | — | `{"used", "limit", "reset_utc"}` — same numbers as `/v1/otp/usage` |
 
 regenerate means "make everything i currently have invalid, and give me one new
 key". use it when a key leaks. use `/v1/keys/deactivate` when you only want to
@@ -176,13 +181,12 @@ curl -X POST "$WAOTP_API/v1/otp/send" \
 ```json
 {
   "ok": true,
-  "mode": "platform",
   "channel": "whatsapp",
   "request_id": "m8f3k2m9xq01zb4",
-  "wa_message_id": "wamid.XXXXXXXXXX",
+  "message_id": "wamid.XXXXXXXXXX",
   "expires_in": 300,
-  "free_used": 42,
-  "free_limit": 500,
+  "used": 42,
+  "limit": 500,
   "reset_utc": "2026-10-01T00:00:00Z"
 }
 ```
@@ -190,13 +194,12 @@ curl -X POST "$WAOTP_API/v1/otp/send" \
 | Field | Meaning |
 |---|---|
 | `ok` | `true` on success |
-| `mode` | always `"platform"` — the gateway generated and delivered the code. exists so a future bring-your-own flow can be told apart; treat it as opaque |
 | `channel` | echoes the channel that was used |
 | `request_id` | ledger id of this send. **keep it** — quote it in support requests; it is the fastest way to locate your message in the audit log |
-| `wa_message_id` | provider-side message id (`wamid.…` for whatsapp, a numeric id for telegram, `mock-…` in mock mode). used for delivery reconciliation |
+| `message_id` | provider-side message id (`wamid.…` for whatsapp, a numeric id for telegram, `mock-…` in mock mode). used for delivery reconciliation |
 | `expires_in` | seconds until the code expires — `300` (5 minutes) by default. build your ui timer from this instead of hardcoding |
-| `free_used` | whatsapp sends used this utc month. after a whatsapp send it already includes that send; after a telegram send it reports the current whatsapp count (telegram never increments it) |
-| `free_limit` | your monthly whatsapp quota (500 by default) |
+| `used` | whatsapp sends delivered this utc month. after a whatsapp send it already includes that send; after a telegram send it reports the current whatsapp count (telegram never increments it) |
+| `limit` | the installation's monthly whatsapp cap. `0` means the operator set no cap |
 | `reset_utc` | when the quota window resets, ISO 8601 UTC — the first instant of the next utc month |
 
 the gateway itself waits up to ~15 s on the provider, so give your http client a
@@ -204,19 +207,21 @@ timeout of at least 30 s.
 
 ### quota semantics
 
-- **the 500/month quota is whatsapp-only.** it counts *delivered* whatsapp sends
-  in the current utc calendar month. telegram is **unlimited and ₹0** — never
-  blocked by the monthly gate, never counted.
+- **the monthly cap is whatsapp-only.** it counts *delivered* whatsapp sends in
+  the current utc calendar month. telegram is **never metered against it** — not
+  blocked by the monthly gate, not counted. telegram delivery is still billed by
+  nobody, but it is not a promise about cost: whatsapp delivery is billed by Meta
+  to the operator of this installation.
 - **per-phone limit: 5 sends/hour, across both channels.** this stops someone
   hammering "resend" against a victim's number on a stolen screen.
-- **failed sends are never counted** — not against the monthly quota, not against
+- **failed sends are never counted** — not against the monthly cap, not against
   the per-phone window — but they are always logged, so delivery problems stay
   auditable.
 - a `409 user_not_linked` (see **telegram linking** below) consumes nothing: no
   code stored, no quota, no throttle.
 - when the monthly cap is hit you get `429 quota_exceeded` with a `Retry-After`
   header saying exactly how long until reset. moving those sends to telegram is
-  the zero-cost workaround.
+  the way around it.
 
 ---
 
@@ -309,7 +314,6 @@ curl "$WAOTP_API/v1/otp/usage" -H "X-Api-Key: $WAOTP_KEY"
 
 ```json
 {
-  "plan": "free",
   "used": 42,
   "limit": 500,
   "reset_utc": "2026-10-01T00:00:00Z"
@@ -318,9 +322,8 @@ curl "$WAOTP_API/v1/otp/usage" -H "X-Api-Key: $WAOTP_KEY"
 
 | Field | Meaning |
 |---|---|
-| `plan` | your plan — `"free"` today |
-| `used` | whatsapp sends delivered this utc month. telegram sends are not included, because they are unlimited |
-| `limit` | monthly whatsapp quota |
+| `used` | whatsapp sends delivered this utc month. telegram sends are not included, because they are never metered against the cap |
+| `limit` | the installation's monthly whatsapp cap; `0` means the operator set no cap at all |
 | `reset_utc` | first instant of the next utc month |
 
 the dashboard shows the same numbers via `GET /v1/usage` (bearer-token auth).
@@ -341,15 +344,15 @@ every error body shares one skeleton, plus optional extras:
 | 401 | `invalid_api_key` | `X-Api-Key` missing or unknown | `missing_header: true` when the header is absent entirely | check the key. if it is lost, regenerate |
 | 401 | `invalid_user_token` | dashboard routes: missing or invalid bearer token | — | re-login on the dashboard |
 | 403 | `key_disabled` | the key was deactivated, or the owning account is suspended | — | issue or re-enable a key; if suspended, contact the operator |
-| 404 | `key_not_found` | `/v1/keys/deactivate` with an unknown id, or another developer's id | — | copy the id from `GET /v1/keys` |
+| 404 | `key_not_found` | `/v1/keys/deactivate` or `DELETE /v1/keys/{id}` with an unknown id, or one belonging to a different account | — | copy the id from `GET /v1/keys` |
 | 409 | `user_not_linked` | telegram send to a phone that has not connected to the bot yet | `link_url` | show the "connect telegram" button, then retry the send |
 | 409 | `key_limit_reached` | issuing a key while 5 active keys already exist | — | deactivate an unused key first |
-| 429 | `quota_exceeded` | monthly whatsapp quota exhausted | `free_used`, `free_limit`, `reset_utc` | wait for `reset_utc`, or move traffic to telegram. `Retry-After` = seconds until reset, minimum 60 |
+| 429 | `quota_exceeded` | the installation's monthly whatsapp cap is exhausted | `used`, `limit`, `reset_utc` | wait for `reset_utc`, or move traffic to telegram. `Retry-After` = seconds until reset, minimum 60 |
 | 429 | `phone_throttled` | more than 5 sends to the same phone in the trailing hour, both channels | `retry_after_seconds: 3600` | wait. don't queue aggressive retries — that keeps the phone pinned at the limit |
 | 429 | `rate_limited` | more than 10 requests/min on one key, all authenticated endpoints combined | `retry_after_seconds: 60` | back off. requests rejected with 429 do not count toward the window |
 | 502 | `delivery_failed` | the provider rejected or failed the delivery | `channel`, `detail`, `retryable` | follow the `retryable` flag, below |
 | 503 | `not_configured` | the operator has not finished provider setup for this channel | `detail` | not fixable from your side — contact the operator, or send on the other channel |
-| 503 | `upstream_unavailable` | the gateway's control-plane store is down (also what `/v1/health` returns then) | — | retry with exponential backoff; brief outages self-heal |
+| 503 | `upstream_unavailable` | the gateway's control-plane store is down (also what `/health/ready` returns then) | — | retry with exponential backoff; brief outages self-heal |
 | 500 | `internal_error` | unexpected gateway bug | — | retry once with backoff; if it repeats, contact support with the timestamp and `request_id` |
 
 ### the `detail` field on 400 invalid_request
@@ -413,20 +416,20 @@ always sleep for the header's value, not a guess of your own.
 
 | Limit | Value | Scope | Notes |
 |---|---|---|---|
-| Monthly delivered codes | 500/month | Per developer, **whatsapp only** | utc calendar month; resets at `reset_utc` |
-| Telegram sends | Unlimited, ₹0 | Per developer | never counted, never blocked by the monthly gate |
-| Per-phone sends | 5/hour | Per developer + phone, **both channels** | trailing 1-hour window; protects the victim number |
+| Monthly delivered codes | 500/month | Per installation, **whatsapp only** | utc calendar month; resets at `reset_utc`. `0` means the operator set no cap |
+| Telegram sends | Not metered | Per installation | never counted, never blocked by the monthly gate. telegram delivery is free of charge, but that is not a claim about whatsapp — Meta bills the operator directly for whatsapp |
+| Per-phone sends | 5/hour | Per owner + phone, **both channels** | trailing 1-hour window; protects the victim number |
 | Verify attempts | 3 per code | Per code | the counter dies with the code; a new code means a fresh 3 |
 | Code TTL | 300 s (5 min) | Per code | `expires_in` in the send response is authoritative |
 | Per-key request rate | 10 requests/min | Per key, all authenticated endpoints combined | sliding 60-second window; rejected 429 requests do not count |
-| Active api keys | 5 | Per developer | creating #6 returns `409 key_limit_reached` |
+| Active api keys | 5 | Per owner | creating #6 returns `409 key_limit_reached` |
 
 - the rate limiter is a sliding window per key, not fixed slots — 10 rapid-fire
   calls at :59 and 10 more at :01 will trip it. space requests slightly if you
   send in bursts.
 - every authenticated call counts — send, verify and usage alike.
-- these are platform defaults; the operator can tune them at any time. treat
-  `free_limit`, `expires_in` and `Retry-After` values in actual responses as the
+- these are the installation's defaults; the operator can tune them at any time.
+  treat `limit`, `expires_in` and `Retry-After` values in actual responses as the
   source of truth.
 
 ---

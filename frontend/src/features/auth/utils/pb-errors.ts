@@ -19,9 +19,10 @@ function fieldMessage(e: ClientResponseError): string | null {
 /**
  * PocketBase rejects a bad password with the flat "Failed to authenticate."
  * Our own sentence says the same thing and reads better, so keep it. Every
- * other 400 — a duplicate email on signup, a password under the minimum length
- * — is specific and actionable, and flattening those into "Invalid email or
- * password." sends people hunting for a typo in a password nobody checked.
+ * other 400 — a password under the minimum length on the change-password form,
+ * a malformed reset request — is specific and actionable, and flattening those
+ * into "Invalid email or password." sends people hunting for a typo in a
+ * password nobody checked.
  */
 const CREDENTIAL_FAILURE = /fail(?:ed)? to authenticate/i;
 
@@ -33,8 +34,10 @@ export function readableAuthError(e: unknown): string {
     }
     if (e.status === 404) {
       // PocketBase answers 404 when the collection in the URL does not exist —
-      // a missing schema, never a wrong password. On signup there is no
-      // password to check at all, so this must not read as a credential error.
+      // a missing schema, never a wrong password, and never a wrong email: the
+      // request never reached a credential check at all. Reporting it as a
+      // credential error would send the operator hunting for a typo instead of
+      // at the install.
       return `No auth collection at ${process.env.NEXT_PUBLIC_PB_URL}. The server's schema is missing — run backend/scripts/provision_pb.py against it.`;
     }
     if (e.status === 429) {

@@ -1,0 +1,139 @@
+# WA OTP — full stack: FastAPI hot path, PocketBase control plane, Next.js dashboard.
+#
+# Quick start:
+#   1. cp .env.example .env    # or cp backend/.env.example backend/.env
+#   2. docker compose up -d
+#   3. docker compose exec api python scripts/create_admin.py you@example.com
+#
+# Every published port binds to 127.0.0.1 by default, so this stack is
+# reachable from the machine it runs on and from nothing else until you put a
+# TLS-terminating reverse proxy in front of it (docs/self-hosting.md). That is
+# deliberate: PocketBase's admin UI is the control plane for every credential
+# this app holds, and it must not be one `docker compose up` away from the
+# public internet. PB_BIND / API_BIND / WEB_BIND override each one.
+#
+# There is no image of this app published anywhere, and no hosted service it
+# talks to. Everything below is built from this checkout and runs on your own
+# machine or server. See docs/self-hosting.md.
+
+services:
+  # ---------------------------------------------------------------------------
+  # PocketBase — data store, auth source of truth, and the operator's back
+  # office (its admin UI is at :8090/_/).
+  # ---------------------------------------------------------------------------
+  pocketbase:
+    build:
+      context: ./backend/pocketbase
+    restart: unless-stopped
+    env_file:
+      - path: ./backend/.env
+        required: false
+      - path: ./.env
+        required: false
+    ports:
+      # Bound to loopback ON PURPOSE. PocketBase is the control plane for every
+      # credential this app holds — the admin UI at /_/ can read and rewrite the
+      # encrypted Meta token, every API key hash and every audit row. Publishing
+      # 8090 on 0.0.0.0 puts that on the public internet on any host with a
+      # public IP, which is the single worst default this file could ship.
+      #
+      # Reach it through an SSH tunnel or the reverse proxy on this host:
+      #   ssh -L 8090:127.0.0.1:8090 you@your-server   # then open localhost:8090/_/
+      #
+      # To expose it on your LAN anyway, set PB_BIND=0.0.0.0 — and put TLS and
+      # authentication in front of it first. See docs/self-hosting.md.
+      - '${PB_BIND:-127.0.0.1}:8090:8090'
+    volumes:
+      # Named volume, so the data survives `docker compose down` and rebuilds.
+      #
+      # A bind-mount to ./backend/pocketbase/pb_data also works, but then the
+      # directory must be chown'd to uid 10001 first, or PocketBase cannot write
+      # to it.
+      - pb_data:/pb/pb_data
+      # Read-only: migrations belong to the repo, and an update to the checkout
+      # is applied by restarting this service.
+      - ./backend/pocketbase/pb_migrations:/pb/pb_migrations:ro
+    healthcheck:
+      test: ['CMD', 'wget', '-q', '-O', '/dev/null', 'http://127.0.0.1:8090/api/health']
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+
+  # ---------------------------------------------------------------------------
+  # API — the hot path. Owns all OTP, quota, throttle and provider logic.
+  # ---------------------------------------------------------------------------
+  api:
+    build:
+      context: ./backend
+    restart: unless-stopped
+    env_file:
+      - path: ./backend/.env
+        required: false
+      - path: ./.env
+        required: false
+    environment:
+      # Container-to-container address. This OVERRIDES PB_URL from backend/.env,
+      # which is written for host access (127.0.0.1) and would resolve to the
+      # API container itself from in here. No need to edit .env for Docker.
+      PB_URL: http://pocketbase:8090
+
+      # Browser origin allowed to call this API. Must match the origin the
+      # dashboard is actually served from, or every dashboard request fails
+      # CORS — which presents as a dead backend rather than a config error.
+      DASHBOARD_ORIGIN: ${DASHBOARD_ORIGIN:-http://localhost:3000}
+    # Loopback by default, like PocketBase above. The API authenticates callers
+    # and holds the provider tokens, so it is not something to publish before a
+    # TLS-terminating proxy is in front of it. Your proxy (or an SSH tunnel for
+    # local testing) reaches it on 127.0.0.1:8000.
+    # Set API_BIND=0.0.0.0 to publish it directly — only behind TLS.
+    ports:
+      - '${API_BIND:-127.0.0.1}:8000:8000'
+    depends_on:
+      pocketbase:
+        condition: service_healthy
+    healthcheck:
+      test: ['CMD', 'curl', '-fsS', 'http://127.0.0.1:8000/health']
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 15s
+
+  # ---------------------------------------------------------------------------
+  # Web — the operator dashboard and the public landing page.
+  # ---------------------------------------------------------------------------
+  web:
+    build:
+      context: ./frontend
+      args:
+        # --- Public URLs -------------------------------------------------------
+        # These are compiled into the browser bundle, so they must be the
+        # addresses a BROWSER can reach. `http://pocketbase:8090` would resolve
+        # only between containers and fail in every real browser, so the
+        # host-published ports are used here instead.
+        #
+        # Set these in your shell or in a .env file next to this compose file
+        # when you deploy to a real domain; the defaults are for local use.
+        NEXT_PUBLIC_PB_URL: ${NEXT_PUBLIC_PB_URL:-http://localhost:8090}
+        NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://localhost:8000}
+        NEXT_PUBLIC_APP_URL: ${NEXT_PUBLIC_APP_URL:-http://localhost:3000}
+        # Must match WAOTP_PB_COLLECTIONS_PREFIX in backend/.env.
+        NEXT_PUBLIC_PB_COLLECTIONS_PREFIX: ${WAOTP_PB_COLLECTIONS_PREFIX:-waotp_}
+        # Leave empty to render no GitHub chrome on the landing page.
+        NEXT_PUBLIC_GITHUB_REPO: ${NEXT_PUBLIC_GITHUB_REPO:-}
+    restart: unless-stopped
+    # Loopback by default: the dashboard is what your operators sign in to, and
+    # a plain-HTTP login on a public port leaks the session token to anyone on
+    # the path. Put TLS in front (docs/self-hosting.md), or set WEB_BIND=0.0.0.0
+    # for a trusted LAN.
+    ports:
+      - '${WEB_BIND:-127.0.0.1}:3000:3000'
+    depends_on:
+      # Not a correctness requirement — the dashboard is client-rendered and
+      # only needs its two backends once a browser loads it — but it avoids a
+      # confusing first paint against a half-started stack.
+      - api
+
+volumes:
+  pb_data:
+    driver: local

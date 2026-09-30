@@ -4,7 +4,8 @@ export default function manifest(): MetadataRoute.Manifest {
   return {
     name: 'WA OTP — Open Source WhatsApp & Telegram OTP Gateway',
     short_name: 'WA OTP',
-    description: 'Lightning-fast open-source WhatsApp & Telegram OTP gateway built with FastAPI Python.',
+    description:
+      'Lightning-fast open-source WhatsApp & Telegram OTP gateway built with FastAPI Python.',
     start_url: '/',
     display: 'standalone',
     background_color: '#05070D',

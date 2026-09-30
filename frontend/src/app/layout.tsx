@@ -8,6 +8,7 @@ import type { Metadata, Viewport } from 'next';
 import NextTopLoader from 'nextjs-toploader';
 import { NuqsAdapter } from 'nuqs/adapters/next/app';
 import '../styles/globals.css';
+import { SITE_URL } from '@/lib/site';
 
 /*
  * Browser chrome colour (mobile address bar, PWA status bar). Not per-theme —
@@ -20,8 +21,6 @@ const META_THEME_COLORS = {
   light: '#F7F3EC',
   dark: '#05070D'
 };
-
-const SITE_URL = process.env.NEXT_PUBLIC_APP_URL || 'https://waotp.codaipro.com';
 
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
@@ -53,9 +52,7 @@ export const metadata: Metadata = {
       { url: '/favicon-16x16.png', sizes: '16x16', type: 'image/png' },
       { url: '/favicon.ico', sizes: 'any' }
     ],
-    apple: [
-      { url: '/apple-touch-icon.png', sizes: '180x180', type: 'image/png' }
-    ],
+    apple: [{ url: '/apple-touch-icon.png', sizes: '180x180', type: 'image/png' }],
     shortcut: '/favicon.ico'
   },
   manifest: '/manifest.webmanifest',

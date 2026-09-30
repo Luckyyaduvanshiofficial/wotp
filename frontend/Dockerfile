@@ -32,7 +32,36 @@ COPY . .
 ENV NODE_ENV=production
 ENV NEXT_TELEMETRY_DISABLED=1
 
-# Build-time env vars — override these with --build-arg or in compose.yml
+# Build-time env vars — override these with --build-arg or in compose.yml.
+#
+# `NEXT_PUBLIC_*` values are inlined into the bundle at build time, so they must
+# be supplied HERE and cannot be changed by restarting the container. They are
+# also compiled into the browser payload, so they are public by construction:
+# never pass a secret as one of these.
+#
+# These must be URLs the *browser* can reach. In Docker Compose that is usually
+# the host-mapped address (http://localhost:8090), NOT the service name —
+# `api`/`pocketbase` resolve only between containers, so a bundle built with
+# them would look fine and fail in every real browser.
+ARG NEXT_PUBLIC_PB_URL
+ARG NEXT_PUBLIC_PB_COLLECTIONS_PREFIX=waotp_
+ARG NEXT_PUBLIC_API_URL
+ARG NEXT_PUBLIC_APP_URL
+ARG NEXT_PUBLIC_GITHUB_REPO
+
+# Error reporting is OFF by default, so a stock container reports nothing
+# anywhere. `next.config.ts` only wraps the build with Sentry when this is
+# unset, so leaving it `true` here is what makes the no-telemetry guarantee hold
+# in Docker. Set it to an empty value AND supply your own DSN to opt in — and it
+# then reports to your Sentry project, never to the authors'.
+ARG NEXT_PUBLIC_SENTRY_DISABLED=true
+ENV NEXT_PUBLIC_SENTRY_DISABLED=$NEXT_PUBLIC_SENTRY_DISABLED
+
+ENV NEXT_PUBLIC_PB_URL=$NEXT_PUBLIC_PB_URL
+ENV NEXT_PUBLIC_PB_COLLECTIONS_PREFIX=$NEXT_PUBLIC_PB_COLLECTIONS_PREFIX
+ENV NEXT_PUBLIC_API_URL=$NEXT_PUBLIC_API_URL
+ENV NEXT_PUBLIC_APP_URL=$NEXT_PUBLIC_APP_URL
+ENV NEXT_PUBLIC_GITHUB_REPO=$NEXT_PUBLIC_GITHUB_REPO
 
 ENV BUILD_STANDALONE=true
 

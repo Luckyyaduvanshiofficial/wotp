@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-"""Register the Telegram webhook (reads the bot token from the PB settings row).
+"""Register the Telegram webhook (reads the bot token from this app's config).
 
 Usage:
     .venv/bin/python scripts/set_telegram_webhook.py https://api.yourdomain.in
@@ -32,8 +32,12 @@ def main() -> int:
         bot_token = app_cfg["tg_bot_token"]
         await pb.close()
         if not bot_token:
-            print("no tg_bot_token in PB settings — add it via the PB admin UI first",
-                  file=sys.stderr)
+            print(
+                "no Telegram bot token configured — set TELEGRAM_BOT_TOKEN in "
+                "backend/.env (or the tg_bot_token field in the PocketBase "
+                "settings row) first",
+                file=sys.stderr,
+            )
             return 1
         secret = cfg.telegram_webhook_secret
         if not secret:

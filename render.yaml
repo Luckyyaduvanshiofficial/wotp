@@ -1,49 +1,84 @@
-# Render Blueprint for the WA OTP FastAPI gateway.
+# Render Blueprint — a free alternative for operators who do not have a VPS.
 #
-# Deploy: Render Dashboard → New → Blueprint → pick this repo. Render reads this
-# file, creates the service, and prompts for every `sync: false` secret below.
+# Docker Compose (see ../docker-compose.yml) is the primary install and the one
+# to use if you have any machine that stays on. This file exists because Render's
+# free tier can run the API when you do not. Read the two caveats below before
+# choosing it: Render free cannot host PocketBase, and it sleeps.
 #
-# Topology (PRD §10): PocketBase stays on the existing VPS and is shared with
-# other projects; this service is only the FastAPI hot path and reaches PB over
-# HTTPS. `WAOTP_PB_COLLECTIONS_PREFIX` is what keeps wa-otp's collections and
-# its `waotp_users` auth collection separate from the other project's — never
-# blank it against a shared instance.
+# Deploy: Render Dashboard → New → Blueprint → pick your fork of this repo.
+# Render reads this file, creates the service, and prompts for every
+# `sync: false` value below. Nothing here is pre-filled with anyone else's
+# infrastructure — every `sync: false` is a value only you can supply.
+#
+# ---------------------------------------------------------------------------
+# CAVEAT 1 — this blueprint is only the API. It is not a complete install.
+# ---------------------------------------------------------------------------
+# PocketBase holds all the data and must live somewhere with a PERSISTENT disk.
+# Render's free plan has an ephemeral filesystem, so a PocketBase instance there
+# would lose every collection, user and API key on each deploy and restart.
+# Put PocketBase on your own box or VPS and point PB_URL at it over HTTPS; the
+# API reaches it as a superuser on every request. See docs/self-hosting.md.
+#
+# ---------------------------------------------------------------------------
+# CAVEAT 2 — free instances sleep, and this is an OTP API.
+# ---------------------------------------------------------------------------
+# Render spins free services down after inactivity. A cold start adds tens of
+# seconds to the first request, and for an OTP send that lands on your user's
+# critical path — they tap "send code" and wait. It works for evaluating the
+# software; it is a poor fit for real traffic. A paid instance, or the compose
+# stack on a small VPS, does not have this problem.
 
 services:
   - type: web
     name: wa-otp-api
     runtime: python
     plan: free
-    # Singapore is the closest Render region to India.
+    # Change this to the region nearest your users.
     region: singapore
-    # The monorepo fix: without this Render tries to build from the repo root,
-    # which has no requirements.txt and no app/ package.
+    # The monorepo fix: without this Render builds from the repo root, which has
+    # no requirements.txt and no app/ package.
     rootDir: backend
     buildCommand: pip install -r requirements.txt
     # `--workers 1` is a correctness requirement, not a tuning knob. The app
-    # holds per-key asyncio locks around sends and a process-local idempotency
-    # store (app/dependencies.py), and PocketBase's superuser token is cached
-    # per process. A second worker breaks all three. Do not scale this service
+    # holds a per-owner asyncio lock around sends and a process-local idempotency
+    # store (app/dependencies.py), and PocketBase's superuser token is cached per
+    # process. A second worker breaks all three. Do not scale this service
     # horizontally without rethinking that state — see ../CLAUDE.md.
     startCommand: 'uvicorn app.main:app --host 0.0.0.0 --port $PORT --workers 1'
-    # NOTE: deliberately no healthCheckPath. /v1/health queries PocketBase and
-    # returns 503 when it is unreachable (app/routers/health.py), and the first
-    # PB call pays superuser bcrypt latency — app/main.py notes >15s on slow
-    # VPSes. As a Render health check that would time out and fail the deploy on
-    # every cold boot, and it would couple deploy success to the VPS being up.
-    # Render therefore uses its default port-bind check. Upstream-aware alerting
-    # belongs on UptimeRobot pointed at /v1/health, which is what PRD §10 says.
+    # Safe to declare now: /health is a pure liveness probe that touches no
+    # dependency, so a busy or briefly unreachable PocketBase cannot fail a
+    # deploy. Readiness lives on /health/ready, which deliberately does query
+    # PocketBase and is therefore not used here.
+    healthCheckPath: /health
+
     envVars:
-      # Pin the interpreter: dev is on 3.12, and Render's default has moved on.
-      # If Render rejects this exact patch, change it in the dashboard.
+      # Pin the interpreter: this app is developed on 3.12, and Render's default
+      # has moved on. If Render rejects this exact patch, change it in its
+      # dashboard.
       - key: PYTHON_VERSION
         value: '3.12.7'
 
-      # --- PocketBase (external, shared) -------------------------------------
+      # --- Required ----------------------------------------------------------
+      # Set to `production` to enable the fail-closed checks in
+      # app/core/config.py: the app then REFUSES TO BOOT unless SECRET_KEY,
+      # WAOTP_FERNET_KEY and PB_SUPERUSER_PASSWORD are all set and mock delivery
+      # is off. That is deliberate — booting with a missing signing key silently
+      # weakens security, which is worse than not booting.
+      - key: APP_ENV
+        value: production
+      # Must stay '0' in production: '1' fakes provider delivery while keeping
+      # every DB row real. Useful locally; a silent outage in production.
+      - key: WAOTP_MOCK_DELIVERY
+        value: '0'
+
+      # --- Your PocketBase ---------------------------------------------------
+      # The public HTTPS URL of YOUR PocketBase instance, reachable from Render
+      # over the internet. This is not optional and there is no default.
       - key: PB_URL
-        value: 'https://pb.codaipro.com'
-      # The isolation guarantee. Blank here would address the stock `users` and
-      # `api_keys` collections, which belong to the other project on that instance.
+        sync: false
+      # Only matters if that PocketBase instance is shared with another project;
+      # it is what keeps this app's collections (and its waotp_users auth
+      # collection) from colliding. Leave the default for a dedicated instance.
       - key: WAOTP_PB_COLLECTIONS_PREFIX
         value: waotp_
       - key: PB_SUPERUSER_EMAIL
@@ -52,26 +87,59 @@ services:
         sync: false
 
       # --- Secrets ----------------------------------------------------------
-      # Encrypts the Meta token at rest in the PB `settings` row. Generate with:
-      # python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"
+      # Encrypts the Meta token at rest in the PB settings row, and signs
+      # Telegram link tokens. Generate your own:
+      #   python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"
       - key: WAOTP_FERNET_KEY
         sync: false
-      # Must match the secret_token passed to Telegram setWebhook.
+      # Any long random string. Signs sessions and link tokens.
+      - key: SECRET_KEY
+        sync: false
+      # Must match the secret_token you pass to Telegram setWebhook.
       - key: TELEGRAM_WEBHOOK_SECRET
         sync: false
 
-      # --- Wiring -----------------------------------------------------------
-      # The dashboard's exact origin — no trailing slash. app/main.py builds a
-      # single-origin CORS allowlist, and `https://…com/` with a trailing slash
-      # silently fails to match, which presents as a dead backend rather than a
-      # config error. Pinned as a literal instead of a `sync: false` prompt so it
-      # cannot be typo'd in the dashboard.
-      # Vercel preview URLs are different origins: to test one, temporarily
-      # change this value (see frontend/docs/deployment.md).
-      - key: DASHBOARD_ORIGIN
-        value: 'https://waotp.codaipro.com'
+      # --- Public URL of THIS service ---------------------------------------
+      # Render assigns the hostname, so it cannot be a literal here. Set it to
+      # the URL Render shows you, e.g. https://wa-otp-api.onrender.com. It is
+      # used to derive and display this app's webhook URL:
+      #   {APP_URL}/webhooks/whatsapp
+      # No trailing slash.
+      - key: APP_URL
+        sync: false
 
-      # Must stay "0" in production: "1" fakes provider delivery while keeping
-      # every DB row real. Useful locally, a silent outage in production.
-      - key: WAOTP_MOCK_DELIVERY
-        value: '0'
+      # --- CORS -------------------------------------------------------------
+      # The exact origin your dashboard is served from — scheme included, no
+      # trailing slash, no path. app/main.py builds a single-origin allowlist,
+      # and 'https://app.example.com/' with a trailing slash silently fails to
+      # match, which presents as a dead backend rather than a config error.
+      #
+      # Vercel preview URLs are different origins: to test one, change this
+      # temporarily (see ../frontend/docs/deployment.md).
+      - key: DASHBOARD_ORIGIN
+        sync: false
+
+      # --- Your WhatsApp credentials (optional) -----------------------------
+      # Leave these blank to run Telegram-only. WhatsApp requires your own Meta
+      # Business account: this project does not provide one and never sends
+      # messages through anyone else's. Step-by-step in docs/meta-setup.md.
+      - key: META_PHONE_NUMBER_ID
+        sync: false
+      - key: META_ACCESS_TOKEN
+        sync: false
+      # You choose this string and paste the same value into the Meta app
+      # dashboard when you register the webhook.
+      - key: META_VERIFY_TOKEN
+        sync: false
+      # Validates X-Hub-Signature-256 on inbound webhook calls. REQUIRED here:
+      # APP_ENV is production above and WhatsApp credentials are configured, so
+      # the app refuses to boot without it. Leaving it unset would mean anyone
+      # who learns the webhook URL can forge delivery statuses.
+      - key: META_APP_SECRET
+        sync: false
+
+      # --- Your Telegram bot (optional, free) -------------------------------
+      - key: TELEGRAM_BOT_TOKEN
+        sync: false
+      - key: TELEGRAM_BOT_USERNAME
+        sync: false

@@ -24,8 +24,8 @@ export function ForgotPasswordForm() {
         // `redirectTo` is sent as a *query* parameter (the SDK folds any unknown
         // top-level option into the query string — see SendOptions in the SDK
         // types), asking PocketBase to point the emailed link at our own
-        // /reset-password route instead of its hosted
-        // `/_/#/auth/confirm-password-reset/...` page on pb.codaipro.com.
+        // /reset-password route instead of the hosted
+        // `/_/#/auth/confirm-password-reset/...` page on your PocketBase host.
         //
         // UNVERIFIED: PocketBase may ignore an unknown query param, in which
         // case the email still lands on its hosted page and the link must be

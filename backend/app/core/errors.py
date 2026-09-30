@@ -156,14 +156,17 @@ _ERROR_EXAMPLES: dict[str, dict] = {
     "key_disabled": {"ok": False, "error": "key_disabled"},
     "key_not_found": {"ok": False, "error": "key_not_found"},
     "user_not_linked": {
+        # `your_bot` is a placeholder, not a real account: the link points at
+        # whichever bot this installation is configured with
+        # (TELEGRAM_BOT_USERNAME). There is no shared bot.
         "ok": False, "error": "user_not_linked",
-        "link_url": "https://t.me/waotp_bot?start=<signed-token>",
+        "link_url": "https://t.me/your_bot?start=<signed-token>",
     },
     "key_limit_reached": {"ok": False, "error": "key_limit_reached"},
     "rate_limited": {"ok": False, "error": "rate_limited", "retry_after_seconds": 60},
     "quota_exceeded": {
         "ok": False, "error": "quota_exceeded",
-        "free_used": 500, "free_limit": 500, "reset_utc": "2026-10-01T00:00:00Z",
+        "used": 500, "limit": 500, "reset_utc": "2026-10-01T00:00:00Z",
     },
     "phone_throttled": {"ok": False, "error": "phone_throttled", "retry_after_seconds": 3600},
     "delivery_failed": {

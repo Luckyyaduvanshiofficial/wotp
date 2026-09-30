@@ -24,10 +24,10 @@ environment variable or a secret manager.
       channel   optional  "whatsapp" (default) | "telegram"
       code      optional  custom code, 4-10 chars [A-Za-z0-9]
 
-      200 { "ok": true, "mode": "platform", "channel": "whatsapp",
+      200 { "ok": true, "channel": "whatsapp",
             "request_id": "m8f3k2m9xq01zb4",
-            "wa_message_id": "wamid.XXXX",
-            "expires_in": 300, "free_used": 42, "free_limit": 500,
+            "message_id": "wamid.XXXX",
+            "expires_in": 300, "used": 42, "limit": 500,
             "reset_utc": "2026-10-01T00:00:00Z" }
 
     POST $WAOTP_API/v1/otp/verify
@@ -42,23 +42,26 @@ environment variable or a secret manager.
 that is the entire surface. build the ui timer from `expires_in` in the send
 response — do not hardcode 300.
 
-`to` is lenient: `+`, spaces and dashes are ignored, 10 digits are read as india
-(+91), a leading trunk `0` is dropped. normalized form is digits + country code.
+`to` is lenient: `+`, spaces and dashes are ignored, a bare national number is
+read with the installation's default country code (india `+91` unless the
+operator changed it), and a leading trunk `0` is dropped. normalized form is
+digits + country code.
 
-    GET $WAOTP_API/v1/otp/usage   ->   { "plan", "used", "limit", "reset_utc" }
+    GET $WAOTP_API/v1/otp/usage   ->   { "used", "limit", "reset_utc" }
 
 ## 3 · limits — read them from responses, never hardcode
 
-    monthly sends     500 whatsapp, per developer, utc calendar month
-    telegram          unlimited and uncounted
+    monthly sends     500 whatsapp, for the whole installation, utc calendar month
+    telegram          never metered against that monthly cap
     per phone         5 sends / hour, both channels
     verify attempts   3 per code, then the code is destroyed
     code ttl          300 s
     requests          10 / min per key, all endpoints combined
     active keys       5
 
-these are platform defaults the operator can change. `free_limit`, `expires_in`
-and every `Retry-After` in a real response win over this list.
+these are the installation's own defaults and the operator can change them.
+`limit`, `expires_in` and every `Retry-After` in a real response win over this
+list. `limit` is `0` when the operator has set no monthly cap at all.
 
 failed sends never consume quota or throttle, but they are always logged.
 
@@ -82,8 +85,9 @@ failed sends never consume quota or throttle, but they are always logged.
                            telegram" button, then RETRY THE SEND. cost nothing,
                            stored no code, consumed no quota
     409 key_limit_reached  5 active keys already; deactivate one
-    429 quota_exceeded     monthly whatsapp cap; sleep Retry-After (min 60), or
-                           move traffic to telegram, which is unmetered
+    429 quota_exceeded     the installation's monthly whatsapp cap; sleep
+                           Retry-After (min 60), or move traffic to telegram,
+                           which is not metered against that cap
     429 phone_throttled    more than 5 sends to one phone in the trailing hour;
                            sleep Retry-After (3600)
     429 rate_limited       more than 10 req/min on this key; sleep Retry-After
@@ -130,7 +134,7 @@ are really stored. send a custom code and verify it back:
     POST /v1/otp/send    { "to": "919876543210", "code": "citest1" }
     POST /v1/otp/verify  { "to": "919876543210", "code": "citest1" }
 
-`wa_message_id` values start with `mock-` in this mode. `GET /v1/health` reports
+`message_id` values start with `mock-` in this mode. `GET /v1/health` reports
 the mode: `{ "ok": true, "pb": true, "mock_delivery": false }`.
 
 ## 8 · done when

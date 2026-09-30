@@ -1,6 +1,7 @@
 import * as React from 'react';
 import Link from 'next/link';
 import { GITHUB_URL } from '@/features/landing/components/github-star';
+import { TEMP_MAIL_ENABLED, TEMP_MAIL_URL } from '@/lib/temp-mail';
 
 export function SiteFooter() {
   return (
@@ -10,7 +11,9 @@ export function SiteFooter() {
       {/* Navigation Grid */}
       <div className='grid grid-cols-2 md:grid-cols-4 gap-8 py-8 border-t border-[var(--rule)]'>
         <div className='space-y-3'>
-          <h3 className='font-mono text-xs uppercase tracking-wider text-[var(--color-ink)] font-bold'>Product</h3>
+          <h3 className='font-mono text-xs uppercase tracking-wider text-[var(--color-ink)] font-bold'>
+            Product
+          </h3>
           <ul className='space-y-2 text-xs text-[var(--color-ink-muted)]'>
             <li>
               <Link href='/' className='hover:text-[var(--color-accent)] transition-colors'>
@@ -28,12 +31,18 @@ export function SiteFooter() {
               </Link>
             </li>
             <li>
-              <Link href='/dashboard/tester' className='hover:text-[var(--color-accent)] transition-colors'>
+              <Link
+                href='/dashboard/tester'
+                className='hover:text-[var(--color-accent)] transition-colors'
+              >
                 Interactive OTP Tester
               </Link>
             </li>
             <li>
-              <Link href='/changelog' className='hover:text-[var(--color-accent)] transition-colors'>
+              <Link
+                href='/changelog'
+                className='hover:text-[var(--color-accent)] transition-colors'
+              >
                 Changelog & Releases
               </Link>
             </li>
@@ -41,22 +50,37 @@ export function SiteFooter() {
         </div>
 
         <div className='space-y-3'>
-          <h3 className='font-mono text-xs uppercase tracking-wider text-[var(--color-ink)] font-bold'>Developer</h3>
+          <h3 className='font-mono text-xs uppercase tracking-wider text-[var(--color-ink)] font-bold'>
+            Developer
+          </h3>
           <ul className='space-y-2 text-xs text-[var(--color-ink-muted)]'>
             {GITHUB_URL ? (
               <li>
-                <a href={GITHUB_URL} target='_blank' rel='noreferrer' className='hover:text-[var(--color-accent)] transition-colors'>
+                <a
+                  href={GITHUB_URL}
+                  target='_blank'
+                  rel='noreferrer'
+                  className='hover:text-[var(--color-accent)] transition-colors'
+                >
                   GitHub Repository
                 </a>
               </li>
             ) : null}
             <li>
-              <Link href='/report-bug' className='hover:text-[var(--color-accent)] transition-colors'>
+              <Link
+                href='/report-bug'
+                className='hover:text-[var(--color-accent)] transition-colors'
+              >
                 Report a Bug
               </Link>
             </li>
             <li>
-              <a href={`${GITHUB_URL}/issues`} target='_blank' rel='noreferrer' className='hover:text-[var(--color-accent)] transition-colors'>
+              <a
+                href={`${GITHUB_URL}/issues`}
+                target='_blank'
+                rel='noreferrer'
+                className='hover:text-[var(--color-accent)] transition-colors'
+              >
                 Issue Tracker
               </a>
             </li>
@@ -69,7 +93,9 @@ export function SiteFooter() {
         </div>
 
         <div className='space-y-3'>
-          <h3 className='font-mono text-xs uppercase tracking-wider text-[var(--color-ink)] font-bold'>CodaiPro Tools</h3>
+          <h3 className='font-mono text-xs uppercase tracking-wider text-[var(--color-ink)] font-bold'>
+            CodaiPro Tools
+          </h3>
           <ul className='space-y-2 text-xs text-[var(--color-ink-muted)]'>
             <li>
               <a
@@ -81,16 +107,18 @@ export function SiteFooter() {
                 CodaiPro Developer Tools ↗
               </a>
             </li>
-            <li>
-              <a
-                href='https://tempmail.codaipro.com/'
-                target='_blank'
-                rel='noreferrer'
-                className='hover:text-[var(--color-accent)] transition-colors'
-              >
-                Temp Mail — Disposable Inbox ↗
-              </a>
-            </li>
+            {TEMP_MAIL_ENABLED && (
+              <li>
+                <a
+                  href={TEMP_MAIL_URL}
+                  target='_blank'
+                  rel='noreferrer'
+                  className='hover:text-[var(--color-accent)] transition-colors'
+                >
+                  Temp Mail — Disposable Inbox ↗
+                </a>
+              </li>
+            )}
             <li>
               <a
                 href='https://codaipro.com/'
@@ -105,7 +133,9 @@ export function SiteFooter() {
         </div>
 
         <div className='space-y-3'>
-          <h3 className='font-mono text-xs uppercase tracking-wider text-[var(--color-ink)] font-bold'>Legal & About</h3>
+          <h3 className='font-mono text-xs uppercase tracking-wider text-[var(--color-ink)] font-bold'>
+            Legal & About
+          </h3>
           <ul className='space-y-2 text-xs text-[var(--color-ink-muted)]'>
             <li>
               <Link href='/privacy' className='hover:text-[var(--color-accent)] transition-colors'>
@@ -118,7 +148,10 @@ export function SiteFooter() {
               </Link>
             </li>
             <li>
-              <Link href='/disclaimer' className='hover:text-[var(--color-accent)] transition-colors'>
+              <Link
+                href='/disclaimer'
+                className='hover:text-[var(--color-accent)] transition-colors'
+              >
                 Disclaimer
               </Link>
             </li>

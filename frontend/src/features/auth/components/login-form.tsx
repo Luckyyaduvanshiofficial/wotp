@@ -10,6 +10,7 @@ import { SubmitButton } from '@/components/forms/submit-button';
 import { GoogleAuthButton } from '@/features/auth/components/google-auth-button';
 import { TempMailPromo } from '@/features/auth/components/temp-mail-promo';
 import { readableAuthError } from '@/features/auth/utils/pb-errors';
+import { TEMP_MAIL_ENABLED, TEMP_MAIL_URL } from '@/lib/temp-mail';
 import { z } from 'zod';
 
 const loginSchema = z.object({
@@ -50,18 +51,25 @@ export function LoginForm() {
             name='email'
             children={(field) => (
               <div>
-                <field.TextField label='Email' type='email' placeholder='you@example.com' required />
-                <p className='mt-1.5 text-xs text-muted-foreground'>
-                  Testing the dashboard?{' '}
-                  <a
-                    href='https://tempmail.codaipro.com/'
-                    target='_blank'
-                    rel='noopener noreferrer'
-                    className='text-primary font-medium underline underline-offset-2 hover:opacity-80'
-                  >
-                    Test with Temp Mail ↗
-                  </a>
-                </p>
+                <field.TextField
+                  label='Email'
+                  type='email'
+                  placeholder='you@example.com'
+                  required
+                />
+                {TEMP_MAIL_ENABLED && (
+                  <p className='mt-1.5 text-xs text-muted-foreground'>
+                    Testing the dashboard?{' '}
+                    <a
+                      href={TEMP_MAIL_URL}
+                      target='_blank'
+                      rel='noopener noreferrer'
+                      className='text-primary font-medium underline underline-offset-2 hover:opacity-80'
+                    >
+                      Test with Temp Mail ↗
+                    </a>
+                  </p>
+                )}
               </div>
             )}
           />

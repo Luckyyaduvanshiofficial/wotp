@@ -7,8 +7,9 @@ import { Icons } from '@/components/icons';
 
 /**
  * Unmissable one-time reveal of a freshly created plaintext API key.
- * Shown exactly once — after dismissal the plaintext is gone from the UI
- * (the tester page may still prefill from sessionStorage for this session).
+ * Shown exactly once — after dismissal the plaintext is gone from the UI. The
+ * in-memory handoff to the tester page (lib/key-handoff.ts) is consumed on the
+ * next navigation and is never written to storage.
  */
 export function KeyReveal({
   apiKey,

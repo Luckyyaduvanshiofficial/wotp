@@ -163,13 +163,16 @@ async def deactivate_key(body: KeyIdIn, request: Request, user=Depends(require_p
 
 @router.get("/usage", response_model=UsageOut, responses=LIST_RESPONSES)
 async def usage(request: Request, user=Depends(require_pb_user)):
-    """Dashboard usage view (the /v1/otp/usage variant is for the API key itself)."""
+    """Dashboard usage view (the /v1/otp/usage variant is for the API key itself).
+
+    `limit` is this installation's own monthly WhatsApp send cap, 0 meaning
+    the operator set none — there is no tier, so nothing else to report.
+    """
     now = _utcnow()
     used = await monthly_used(request.app.state.pb, user["id"], now)
     cfg = await get_app_settings(request.app.state.pb)
     return {
-        "plan": user.get("plan") or "free",
         "used": used,
-        "limit": cfg["free_monthly_limit"],
+        "limit": cfg["monthly_send_quota"],
         "reset_utc": reset_utc_iso(now),
     }

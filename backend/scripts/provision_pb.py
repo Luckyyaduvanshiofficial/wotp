@@ -4,20 +4,19 @@ self-hosted PocketBase instance, via the superuser REST API.
 
 Mirrors backend/pocketbase/pb_migrations/1757750400_init_waotp.pb.js 1:1, but
 every wa-otp collection is created under `--prefix` (default "waotp_") so it
-can coexist with other projects' collections (e.g. their own api_keys,
-api_usage_logs, mailbox_keys) on the same PB instance.
+can coexist with other projects' collections on the same PB instance.
 
 With a prefix set, the app also gets its OWN auth collection ({prefix}users)
-so developer accounts stay fully separate from other apps' users; the shared
+so operator accounts stay fully separate from other apps' users; the shared
 `users` collection is never read or modified. Without a prefix (dedicated
-instance), plan/status are added to the stock `users` collection instead.
+instance), `status` is added to the stock `users` collection instead.
 
 Safe to run repeatedly: collections that already exist are reported and
 skipped untouched; the settings seed row is only created when the collection
 has zero records. The superuser token and password are never printed.
 
 Usage:
-    .venv/bin/python scripts/provision_pb.py --url https://pb.codaipro.com \
+    .venv/bin/python scripts/provision_pb.py --url http://127.0.0.1:8090 \
         --email ops@example.com --password '***' --prefix waotp_
 
 Credentials fall back to the PB_SUPERUSER_EMAIL / PB_SUPERUSER_PASSWORD env
@@ -46,12 +45,6 @@ USER_AGENT = "waotp-provision/1.0"
 CREATED = {"name": "created", "type": "autodate", "onCreate": True}
 UPDATED = {"name": "updated", "type": "autodate", "onCreate": True, "onUpdate": True}
 
-USER_PLAN_FIELD = {
-    "name": "plan",
-    "type": "select",
-    "values": ["free", "paid"],
-    "maxSelect": 1,
-}
 USER_STATUS_FIELD = {
     "name": "status",
     "type": "select",
@@ -59,18 +52,40 @@ USER_STATUS_FIELD = {
     "maxSelect": 1,
 }
 
+# Self-service update rule for the operator auth collection.
+#
+# `id = @request.auth.id` alone lets a signed-in user PATCH *any* field of their
+# own record — including `status`, which is the only thing that gates a
+# suspended account's API keys, and `verified`. The `:changed` modifier is
+# PocketBase's documented way to forbid that: it is true only when the client
+# submitted the field AND its value differs from the stored one, so a client
+# that echoes the current value still works while a real change is rejected.
+SELF_UPDATE_RULE = (
+    "id = @request.auth.id"
+    " && @request.body.status:changed = false"
+    " && @request.body.verified:changed = false"
+)
+
 SEED_SETTINGS = {
     "meta_phone_number_id": "",
     "meta_token_enc": "",
+    # Encrypted at rest like the token: it authenticates inbound webhook calls,
+    # so a dump of this row must not hand an attacker the ability to forge them.
+    "meta_app_secret_enc": "",
+    "meta_verify_token": "",
     "meta_template": "verification_code",
     "meta_template_lang": "en_US",
     "tg_bot_token": "",
     "tg_bot_username": "",
-    "free_monthly_limit": 500,
+    # 0 = the operator set no monthly cap (they send from their own account)
+    "monthly_send_quota": 0,
     "per_phone_hourly": 5,
     "code_ttl_seconds": 300,
     "max_attempts": 3,
     "ratelimit_per_min": 10,
+    "ratelimit_per_ip_per_min": 30,
+    "resend_cooldown_seconds": 0,
+    "otp_length": 6,
 }
 
 
@@ -80,8 +95,17 @@ def auth_collection_payload(physical: str) -> dict:
     System auth fields (password, tokenKey, email, emailVisibility, verified)
     are added by PocketBase automatically for type "auth". Rules:
     - users can see/update their own record; delete is admin-only.
-    - createRule "" = public developer signup (normal email+password flow).
-      Set it to None instead for invite-only operation.
+    - createRule None = operator-only. Accounts are provisioned out-of-band
+      (`scripts/create_admin.py`, or the PocketBase admin UI). An open create
+      rule would let any visitor register and then mint an API key against the
+      operator's own Meta account.
+    - updateRule additionally refuses to let a user change their own `status` or
+      `verified`. Without that guard, `status` — which is the only thing
+      gating a suspended operator's keys — could be set back to "active" by
+      that same user through the PocketBase REST API, using their own session
+      token. `:changed = false` (PocketBase's documented modifier for exactly
+      this) permits a client that round-trips the current value but rejects a
+      change to it.
     - Index names embed the physical name: SQLite index names are unique
       across the whole DB file, so they must not collide with the stock
       `users` collection's indexes.
@@ -91,13 +115,13 @@ def auth_collection_payload(physical: str) -> dict:
         "type": "auth",
         "listRule": "id = @request.auth.id",
         "viewRule": "id = @request.auth.id",
-        "createRule": "",
-        "updateRule": "id = @request.auth.id",
+        "createRule": None,
+        "updateRule": SELF_UPDATE_RULE,
         "deleteRule": None,
         "passwordAuth": {"enabled": True, "identityFields": ["email"]},
         "authRule": "",
         "manageRule": None,
-        "fields": [USER_PLAN_FIELD, USER_STATUS_FIELD],
+        "fields": [USER_STATUS_FIELD],
         "indexes": [
             f"CREATE UNIQUE INDEX idx_{physical}_tokenKey ON `{physical}` (`tokenKey`)",
             f"CREATE UNIQUE INDEX idx_{physical}_email ON `{physical}` (`email`) "
@@ -150,36 +174,22 @@ def collection_payload(logical: str, physical: str, ids: dict[str, str]) -> dict
             # provider message id: WhatsApp "wamid..." or Telegram message id
             {"name": "wa_message_id", "type": "text", "max": 128},
             {"name": "channel", "type": "select", "values": ["whatsapp", "telegram"], "maxSelect": 1},
-            {"name": "status", "type": "select", "values": ["sent", "failed"], "maxSelect": 1},
-            {"name": "cost_type", "type": "select", "values": ["free", "paid"], "maxSelect": 1},
+            # "sent" is written by the send path; the rest arrive later from the
+            # provider's status webhook.
+            {"name": "status", "type": "select",
+             "values": ["sent", "delivered", "read", "failed"], "maxSelect": 1},
+            # Written ONCE by the send path when the provider accepted the
+            # message, and never updated afterwards. This — not `status` — is
+            # what the monthly cap counts: status moves to delivered/read as
+            # callbacks arrive, so counting it would make usage shrink as
+            # messages succeeded. See the billable migration.
+            {"name": "billable", "type": "bool"},
             {"name": "error", "type": "text", "max": 500},
         ]
         indexes = [
-            f"CREATE INDEX idx_{physical}_owner_created ON `{physical}` (`owner`, `created`)"
+            f"CREATE INDEX idx_{physical}_owner_created ON `{physical}` (`owner`, `created`)",
+            f"CREATE INDEX idx_{physical}_wa_message_id ON `{physical}` (`wa_message_id`)",
         ]
-    elif logical == "wallet_txns":
-        fields = [
-            CREATED,
-            UPDATED,
-            {"name": "owner", "type": "relation", "collectionId": users_id,
-             "cascadeDelete": True, "maxSelect": 1, "required": True},
-            {"name": "txn_type", "type": "select",
-             "values": ["topup", "free", "spend", "refund"], "maxSelect": 1},
-            {"name": "amount", "type": "number"},
-            {"name": "balance_after", "type": "number"},
-            {"name": "note", "type": "text", "max": 200},
-        ]
-        indexes = [f"CREATE INDEX idx_{physical}_owner ON `{physical}` (`owner`, `created`)"]
-    elif logical == "rate_cards":
-        fields = [
-            CREATED,
-            UPDATED,
-            {"name": "country_iso", "type": "text", "required": True, "max": 2},
-            {"name": "country_name", "type": "text", "max": 100},
-            {"name": "meta_rate_usd", "type": "number"},
-            {"name": "our_rate_inr", "type": "number"},
-        ]
-        indexes = [f"CREATE UNIQUE INDEX idx_{physical}_iso ON `{physical}` (`country_iso`)"]
     elif logical == "tg_links":
         fields = [
             CREATED,
@@ -197,15 +207,23 @@ def collection_payload(logical: str, physical: str, ids: dict[str, str]) -> dict
             {"name": "meta_phone_number_id", "type": "text", "max": 64},
             # Fernet-encrypted at rest; even a PB dump should not leak the Meta token.
             {"name": "meta_token_enc", "type": "text", "max": 500},
+            # Also encrypted: this one verifies inbound webhook signatures, so
+            # leaking it would let an attacker forge delivery-status callbacks.
+            {"name": "meta_app_secret_enc", "type": "text", "max": 500},
+            {"name": "meta_verify_token", "type": "text", "max": 128},
             {"name": "meta_template", "type": "text", "max": 64},
             {"name": "meta_template_lang", "type": "text", "max": 16},
             {"name": "tg_bot_token", "type": "text", "max": 128},
             {"name": "tg_bot_username", "type": "text", "max": 64},
-            {"name": "free_monthly_limit", "type": "number", "onlyInt": True},
+            # 0 = the operator set no monthly cap
+            {"name": "monthly_send_quota", "type": "number", "onlyInt": True},
             {"name": "per_phone_hourly", "type": "number", "onlyInt": True},
             {"name": "code_ttl_seconds", "type": "number", "onlyInt": True},
             {"name": "max_attempts", "type": "number", "onlyInt": True},
             {"name": "ratelimit_per_min", "type": "number", "onlyInt": True},
+            {"name": "ratelimit_per_ip_per_min", "type": "number", "onlyInt": True},
+            {"name": "resend_cooldown_seconds", "type": "number", "onlyInt": True},
+            {"name": "otp_length", "type": "number", "onlyInt": True},
         ]
         indexes = []
     else:  # pragma: no cover - guarded by the caller's ORDER list
@@ -230,15 +248,15 @@ def _rebuild_stale_relations(
 ) -> bool:
     """One-time self-heal for instances provisioned before the dedicated
     {prefix}users auth collection existed: their {prefix}api_keys/otp_codes/
-    messages/wallet_txns owner relations point at the shared users pool.
+    messages owner relations point at the shared users pool.
 
     PocketBase refuses to change a relation's collection in place, so the
     collections must be deleted and recreated. That is only safe when they
     hold zero records — if any has data, abort and let the operator migrate.
     Returns True when the instance is ready for the create pass.
     """
-    REBUILD_ORDER = ("messages", "otp_codes", "wallet_txns", "api_keys")  # children first
-    LOGICALS = ("api_keys", "otp_codes", "messages", "wallet_txns")
+    REBUILD_ORDER = ("messages", "otp_codes", "api_keys")  # children first
+    LOGICALS = ("api_keys", "otp_codes", "messages")
 
     stale: set[str] = set()
     for logical in LOGICALS:
@@ -299,7 +317,7 @@ def main() -> int:
                     "PocketBase instance via the superuser REST API."
     )
     parser.add_argument("--url", required=True,
-                        help="PocketBase base URL, e.g. https://pb.codaipro.com")
+                        help="PocketBase base URL, e.g. http://127.0.0.1:8090 or https://pb.example.com")
     parser.add_argument("--email", default=os.environ.get("PB_SUPERUSER_EMAIL", ""),
                         help="superuser email (default: PB_SUPERUSER_EMAIL env)")
     parser.add_argument("--password", default=os.environ.get("PB_SUPERUSER_PASSWORD", ""),
@@ -334,7 +352,7 @@ def main() -> int:
 
         # 2. developer auth collection. With a prefix, wa-otp gets its own
         # {prefix}users auth collection (separate login pool from other apps);
-        # without a prefix (dedicated instance), plan/status are added to the
+        # without a prefix (dedicated instance), `status` is added to the
         # stock `users` instead. Relations in api_keys/... reference this id,
         # so it must exist before the base collections.
         ids: dict[str, str] = {}
@@ -369,28 +387,35 @@ def main() -> int:
                 return 1
             users_json = r.json()
             existing_names = {f.get("name") for f in users_json.get("fields") or []}
-            missing = [d for d in (USER_PLAN_FIELD, USER_STATUS_FIELD)
+            missing = [d for d in (USER_STATUS_FIELD,)
                        if d["name"] not in existing_names]
-            if not missing:
-                results.append(("users", "exists", "plan/status fields already present"))
+            # A dedicated instance still needs the same self-update guard: the
+            # stock `users` collection ships with a permissive update rule, so
+            # `status` would be self-editable there too.
+            rule_needs_guard = users_json.get("updateRule") != SELF_UPDATE_RULE
+            if not missing and not rule_needs_guard:
+                results.append(("users", "exists", "status field and update rule already present"))
             else:
                 patched = dict(users_json)
-                patched["fields"] = list(users_json.get("fields") or []) + missing
+                if missing:
+                    patched["fields"] = list(users_json.get("fields") or []) + missing
+                patched["updateRule"] = SELF_UPDATE_RULE
                 r = http.patch("/api/collections/users", headers=headers, json=patched)
                 if r.status_code >= 400:
                     print(f"error: patching users failed ({r.status_code}): "
                           f"{r.text[:300]}", file=sys.stderr)
                     return 1
-                results.append(
-                    ("users", "patched", "added: " + ", ".join(d["name"] for d in missing))
-                )
+                added = [d["name"] for d in missing]
+                if added:
+                    results.append(("users", "patched", "added: " + ", ".join(added)))
+                if rule_needs_guard:
+                    results.append(("users", "patched", "self-update guard on status/verified"))
             ids["users"] = users_json["id"]
 
         # 3. prefixed wa-otp base collections; api_keys first because otp_codes
         # and messages hold relations to it.
         order = [
-            "api_keys", "otp_codes", "messages",
-            "wallet_txns", "rate_cards", "tg_links", "settings",
+            "api_keys", "otp_codes", "messages", "tg_links", "settings",
         ]
         for logical in order:
             physical = args.prefix + logical

@@ -19,6 +19,7 @@ import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
 import { Skeleton } from '@/components/ui/skeleton';
 import { cn } from '@/lib/utils';
+import { TEMP_MAIL_ENABLED, TEMP_MAIL_URL, tempMailHost } from '@/lib/temp-mail';
 
 function UsageCard() {
   const { data, isLoading, isError, error, refetch, isFetching } = useQuery({
@@ -62,8 +63,11 @@ function UsageCard() {
     );
   }
 
-  const { plan, used, limit, reset_utc } = data;
-  const pct = limit > 0 ? Math.min(100, Math.round((used / limit) * 100)) : 0;
+  // There is no `plan` here: this is a self-hosted, BYOK installation, so the
+  // only thing worth saying about the cap is whether one is set at all.
+  const { used, limit, reset_utc } = data;
+  const capped = limit > 0;
+  const pct = capped ? Math.min(100, Math.round((used / limit) * 100)) : 0;
   const resetDate = new Date(reset_utc);
   const resetLabel = Number.isNaN(resetDate.getTime())
     ? reset_utc
@@ -76,8 +80,11 @@ function UsageCard() {
           <CardTitle className='text-xs sm:text-sm font-medium text-muted-foreground'>
             Monthly WhatsApp Delivery
           </CardTitle>
-          <Badge variant={pct >= 100 ? 'destructive' : 'secondary'} className='capitalize text-[11px]'>
-            {plan}
+          <Badge
+            variant={capped && pct >= 100 ? 'destructive' : 'secondary'}
+            className='text-[11px]'
+          >
+            {capped ? 'capped' : 'no cap'}
           </Badge>
         </div>
         <div className='mt-1 flex items-baseline gap-2'>
@@ -92,7 +99,9 @@ function UsageCard() {
       <CardContent className='p-4 sm:p-6 pt-0'>
         <Progress value={pct} aria-label={`${pct}% of monthly allocation used`} className='h-2' />
         <div className='mt-3 flex flex-wrap items-center justify-between gap-1 text-[11px] sm:text-xs text-muted-foreground'>
-          <span>Resets on <strong className='text-foreground font-medium'>{resetLabel}</strong></span>
+          <span>
+            Resets on <strong className='text-foreground font-medium'>{resetLabel}</strong>
+          </span>
           <span className='font-mono'>{pct}% used</span>
         </div>
       </CardContent>
@@ -109,7 +118,10 @@ function TelegramChannelCard() {
             <Icons.telegram className='size-4 text-sky-500' />
             Telegram OTP Channel
           </CardTitle>
-          <Badge variant='outline' className='border-sky-500/30 bg-sky-500/10 text-sky-600 dark:text-sky-400 text-[11px]'>
+          <Badge
+            variant='outline'
+            className='border-sky-500/30 bg-sky-500/10 text-sky-600 dark:text-sky-400 text-[11px]'
+          >
             Free Forever
           </Badge>
         </div>
@@ -165,7 +177,9 @@ function KeysCountCard() {
       </CardHeader>
       <CardContent className='p-4 sm:p-6 pt-0'>
         <p className='text-muted-foreground text-xs leading-relaxed'>
-          Pass your secret key in the <code className='text-[11px] font-mono bg-muted px-1 py-0.5 rounded'>X-Api-Key</code> header.
+          Pass your secret key in the{' '}
+          <code className='text-[11px] font-mono bg-muted px-1 py-0.5 rounded'>X-Api-Key</code>{' '}
+          header.
         </p>
         <div className='mt-3'>
           <Link
@@ -190,7 +204,10 @@ function SandboxPromoCard() {
             <Icons.flask className='size-4 text-primary' />
             Interactive OTP Tester
           </CardTitle>
-          <Badge variant='outline' className='border-primary/30 bg-primary/10 text-primary text-[11px]'>
+          <Badge
+            variant='outline'
+            className='border-primary/30 bg-primary/10 text-primary text-[11px]'
+          >
             Sandbox
           </Badge>
         </div>
@@ -381,16 +398,24 @@ function RecentKeysCard() {
           <div className='py-8 text-center text-xs sm:text-sm text-muted-foreground'>
             <Icons.key className='mx-auto size-6 mb-2 text-muted-foreground/50' />
             No API keys created yet.{' '}
-            <Link href='/dashboard/keys' className='text-primary underline underline-offset-4 font-medium'>
+            <Link
+              href='/dashboard/keys'
+              className='text-primary underline underline-offset-4 font-medium'
+            >
               Create your first key
             </Link>
           </div>
         ) : (
           <ul className='divide-y'>
             {data.keys.slice(0, 4).map((k) => (
-              <li key={k.id} className='flex items-center justify-between py-2.5 first:pt-0 last:pb-0 gap-2'>
+              <li
+                key={k.id}
+                className='flex items-center justify-between py-2.5 first:pt-0 last:pb-0 gap-2'
+              >
                 <div className='min-w-0'>
-                  <p className='text-xs sm:text-sm font-medium truncate'>{k.label || 'Unnamed key'}</p>
+                  <p className='text-xs sm:text-sm font-medium truncate'>
+                    {k.label || 'Unnamed key'}
+                  </p>
                   <p className='text-muted-foreground font-mono text-[11px]'>waotp_••••{k.last4}</p>
                 </div>
                 <div className='flex items-center gap-2 shrink-0'>
@@ -408,7 +433,12 @@ function RecentKeysCard() {
           variant='outline'
           size='sm'
           className='w-full text-xs font-medium'
-          render={<Link href='/dashboard/keys'><Icons.add className='size-3.5 mr-1.5' />Create new key</Link>}
+          render={
+            <Link href='/dashboard/keys'>
+              <Icons.add className='size-3.5 mr-1.5' />
+              Create new key
+            </Link>
+          }
         />
       </CardFooter>
     </Card>
@@ -416,6 +446,9 @@ function RecentKeysCard() {
 }
 
 function TempMailTipCard() {
+  // Nothing to show unless this installation opted in — see lib/temp-mail.ts.
+  if (!TEMP_MAIL_ENABLED) return null;
+
   return (
     <Card className='border border-sky-500/25 bg-gradient-to-br from-sky-500/10 via-sky-500/[0.03] to-transparent shadow-sm'>
       <CardHeader className='p-4 sm:p-6 pb-2 sm:pb-3'>
@@ -426,19 +459,23 @@ function TempMailTipCard() {
             </span>
             Testing with Temp Mail
           </CardTitle>
-          <Badge variant='outline' className='border-sky-500/30 bg-sky-500/10 text-sky-600 dark:text-sky-400 text-[10px]'>
+          <Badge
+            variant='outline'
+            className='border-sky-500/30 bg-sky-500/10 text-sky-600 dark:text-sky-400 text-[10px]'
+          >
             Companion Tool
           </Badge>
         </div>
       </CardHeader>
       <CardContent className='p-4 sm:p-6 pt-0 space-y-2.5'>
         <p className='text-xs text-muted-foreground leading-relaxed'>
-          Testing your application&apos;s registration and authentication flows? Use disposable inboxes on{' '}
-          <strong className='text-foreground font-medium'>tempmail.codaipro.com</strong> to test without sharing your real email address.
+          Testing your application&apos;s registration and authentication flows? Use disposable
+          inboxes on <strong className='text-foreground font-medium'>{tempMailHost()}</strong> to
+          test without sharing your real email address.
         </p>
         <div>
           <a
-            href='https://tempmail.codaipro.com/'
+            href={TEMP_MAIL_URL}
             target='_blank'
             rel='noopener noreferrer'
             className='inline-flex items-center gap-1.5 text-xs font-semibold text-sky-600 dark:text-sky-400 hover:underline'
@@ -468,19 +505,34 @@ export function Overview() {
             variant='outline'
             size='sm'
             className='h-8 text-xs'
-            render={<Link href='/dashboard/tester'><Icons.flask className='size-3.5 mr-1.5 text-primary' />Test on Phone</Link>}
+            render={
+              <Link href='/dashboard/tester'>
+                <Icons.flask className='size-3.5 mr-1.5 text-primary' />
+                Test on Phone
+              </Link>
+            }
           />
           <Button
             variant='outline'
             size='sm'
             className='h-8 text-xs'
-            render={<Link href='/dashboard/keys'><Icons.add className='size-3.5 mr-1.5 text-primary' />New API Key</Link>}
+            render={
+              <Link href='/dashboard/keys'>
+                <Icons.add className='size-3.5 mr-1.5 text-primary' />
+                New API Key
+              </Link>
+            }
           />
           <Button
             variant='outline'
             size='sm'
             className='h-8 text-xs'
-            render={<Link href='/docs'><Icons.book className='size-3.5 mr-1.5' />API Docs</Link>}
+            render={
+              <Link href='/docs'>
+                <Icons.book className='size-3.5 mr-1.5' />
+                API Docs
+              </Link>
+            }
           />
         </div>
       </div>

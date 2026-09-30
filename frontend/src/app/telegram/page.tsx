@@ -7,6 +7,7 @@ import { LiveStarsBadge } from '@/features/landing/components/live-stars-badge';
 import { SiteFooter } from '@/features/landing/components/site-footer';
 import { SiteNav } from '@/features/landing/components/site-nav';
 import { Icons } from '@/components/icons';
+import { SITE_URL } from '@/lib/site';
 
 export const metadata: Metadata = {
   title: 'Free Telegram OTP Gateway — Lightning Fast & Unmetered Verification (FastAPI Python)',
@@ -27,7 +28,7 @@ export const metadata: Metadata = {
     title: 'Free Telegram OTP Gateway — Lightning Fast & Unmetered Verification',
     description:
       'Deliver instant one-time passwords via Telegram Bot API with zero fees, no Meta KYC, and lightning-fast FastAPI Python speed. 100% free and unmetered.',
-    url: 'https://waotp.codaipro.com/telegram',
+    url: `${SITE_URL}/telegram`,
     siteName: 'WA OTP',
     type: 'website'
   },
@@ -108,7 +109,7 @@ export default function TelegramLandingPage() {
       name: 'Lucky Yaduvanshi',
       url: 'https://luckyyaduvanshi.in/'
     },
-    url: 'https://waotp.codaipro.com/telegram'
+    url: `${SITE_URL}/telegram`
   };
 
   return (
@@ -136,9 +137,9 @@ export default function TelegramLandingPage() {
           </h1>
 
           <p className='lm-lede'>
-            Skip expensive SMS gateway contracts, telecom DND blocks, and Meta corporate KYC hurdles.
-            Send one-time passwords through Telegram Bot API with sub-second delivery, zero per-message charges,
-            and an asynchronous FastAPI Python backend.
+            Skip expensive SMS gateway contracts, telecom DND blocks, and Meta corporate KYC
+            hurdles. Send one-time passwords through Telegram Bot API with sub-second delivery, zero
+            per-message charges, and an asynchronous FastAPI Python backend.
           </p>
 
           <div className='lm-actions'>
@@ -181,8 +182,9 @@ export default function TelegramLandingPage() {
               two restful calls to dispatch and verify.
             </h2>
             <p className='lm-lede'>
-              Pass <code>channel: &quot;telegram&quot;</code> in your request payload. The gateway sends an authenticated bot message
-              containing a time-limited 6-digit PIN and returns an expiry window.
+              Pass <code>channel: &quot;telegram&quot;</code> in your request payload. The gateway
+              sends an authenticated bot message containing a time-limited 6-digit PIN and returns
+              an expiry window.
             </p>
           </div>
 
@@ -215,8 +217,9 @@ export default function TelegramLandingPage() {
               why telegram otp is the developer&apos;s secret weapon.
             </h2>
             <p className='lm-lede'>
-              Traditional SMS gateways charge high per-message fees, impose regulatory templates, and fail on DND lines.
-              Telegram Bot OTP provides an unmetered, instant, zero-cost alternative for apps and side projects.
+              Traditional SMS gateways charge high per-message fees, impose regulatory templates,
+              and fail on DND lines. Telegram Bot OTP provides an unmetered, instant, zero-cost
+              alternative for apps and side projects.
             </p>
           </div>
 
@@ -225,16 +228,26 @@ export default function TelegramLandingPage() {
               <thead>
                 <tr className='border-b border-[var(--rule)] bg-[var(--rule)]/30 text-[var(--color-ink)]'>
                   <th className='p-3.5 sm:p-4 uppercase tracking-wider'>Feature</th>
-                  <th className='p-3.5 sm:p-4 uppercase tracking-wider text-sky-600 dark:text-sky-400 font-bold'>Telegram Bot OTP</th>
-                  <th className='p-3.5 sm:p-4 uppercase tracking-wider text-[var(--color-ink-muted)]'>WhatsApp Cloud API</th>
-                  <th className='p-3.5 sm:p-4 uppercase tracking-wider text-[var(--color-ink-muted)]'>Traditional SMS</th>
+                  <th className='p-3.5 sm:p-4 uppercase tracking-wider text-sky-600 dark:text-sky-400 font-bold'>
+                    Telegram Bot OTP
+                  </th>
+                  <th className='p-3.5 sm:p-4 uppercase tracking-wider text-[var(--color-ink-muted)]'>
+                    WhatsApp Cloud API
+                  </th>
+                  <th className='p-3.5 sm:p-4 uppercase tracking-wider text-[var(--color-ink-muted)]'>
+                    Traditional SMS
+                  </th>
                 </tr>
               </thead>
               <tbody className='divide-y divide-[var(--rule)]'>
                 {COMPARISON.map((row) => (
                   <tr key={row.feature} className='hover:bg-[var(--rule)]/10 transition-colors'>
-                    <td className='p-3.5 sm:p-4 font-semibold text-[var(--color-ink)]'>{row.feature}</td>
-                    <td className='p-3.5 sm:p-4 font-bold text-sky-600 dark:text-sky-400'>{row.telegram}</td>
+                    <td className='p-3.5 sm:p-4 font-semibold text-[var(--color-ink)]'>
+                      {row.feature}
+                    </td>
+                    <td className='p-3.5 sm:p-4 font-bold text-sky-600 dark:text-sky-400'>
+                      {row.telegram}
+                    </td>
                     <td className='p-3.5 sm:p-4 text-[var(--color-ink-muted)]'>{row.whatsapp}</td>
                     <td className='p-3.5 sm:p-4 text-[var(--color-ink-muted)]'>{row.sms}</td>
                   </tr>
@@ -252,7 +265,8 @@ export default function TelegramLandingPage() {
               frictionless bot pairing in 3 seconds.
             </h2>
             <p className='lm-lede'>
-              How your end-users receive their one-time code on Telegram without entering their password or revealing private credentials.
+              How your end-users receive their one-time code on Telegram without entering their
+              password or revealing private credentials.
             </p>
           </div>
 
@@ -263,7 +277,8 @@ export default function TelegramLandingPage() {
               </span>
               <h3 className='font-semibold text-sm text-[var(--color-ink)]'>One-Click Bot Start</h3>
               <p className='text-xs text-[var(--color-ink-muted)] leading-relaxed'>
-                User taps your app&apos;s Telegram link (`t.me/your_otp_bot?start=auth`). Telegram opens directly on their mobile device or desktop.
+                User taps your app&apos;s Telegram link (`t.me/your_otp_bot?start=auth`). Telegram
+                opens directly on their mobile device or desktop.
               </p>
             </div>
 
@@ -271,9 +286,12 @@ export default function TelegramLandingPage() {
               <span className='flex size-8 items-center justify-center rounded-lg bg-sky-500/15 text-sky-600 dark:text-sky-400 font-mono text-sm font-bold'>
                 2
               </span>
-              <h3 className='font-semibold text-sm text-[var(--color-ink)]'>Instant Push Notification</h3>
+              <h3 className='font-semibold text-sm text-[var(--color-ink)]'>
+                Instant Push Notification
+              </h3>
               <p className='text-xs text-[var(--color-ink-muted)] leading-relaxed'>
-                The gateway sends the formatted OTP message containing the single-use numeric code within 400 milliseconds.
+                The gateway sends the formatted OTP message containing the single-use numeric code
+                within 400 milliseconds.
               </p>
             </div>
 
@@ -281,9 +299,12 @@ export default function TelegramLandingPage() {
               <span className='flex size-8 items-center justify-center rounded-lg bg-sky-500/15 text-sky-600 dark:text-sky-400 font-mono text-sm font-bold'>
                 3
               </span>
-              <h3 className='font-semibold text-sm text-[var(--color-ink)]'>Single-Use Verification</h3>
+              <h3 className='font-semibold text-sm text-[var(--color-ink)]'>
+                Single-Use Verification
+              </h3>
               <p className='text-xs text-[var(--color-ink-muted)] leading-relaxed'>
-                User enters the code into your app. The code is verified and immediately burned from the database to prevent replay attacks.
+                User enters the code into your app. The code is verified and immediately burned from
+                the database to prevent replay attacks.
               </p>
             </div>
           </div>
@@ -299,7 +320,8 @@ export default function TelegramLandingPage() {
               start sending unmetered telegram otps today.
             </h2>
             <p className='lm-lede'>
-              Sign up for our hosted platform or clone the repository to self-host on your own infrastructure.
+              Sign up for our hosted platform or clone the repository to self-host on your own
+              infrastructure.
             </p>
           </div>
           <div className='lm-actions'>

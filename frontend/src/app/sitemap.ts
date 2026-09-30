@@ -1,7 +1,8 @@
 import type { MetadataRoute } from 'next';
+import { SITE_URL } from '@/lib/site';
 
 export default function sitemap(): MetadataRoute.Sitemap {
-  const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://waotp.codaipro.com';
+  const baseUrl = process.env.NEXT_PUBLIC_APP_URL || `${SITE_URL}`;
   const now = new Date();
 
   const routes = [

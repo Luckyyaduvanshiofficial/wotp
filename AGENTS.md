@@ -1,78 +1,96 @@
-# AGENTS.md — AI Agent Guidelines & Branch Rules
+# AGENTS.md — AI Agent Guidelines
 
-This document defines the architecture, branch structure, and **strict operational rules** for all AI coding agents (Claude, Cursor, Antigravity, Copilot, Windsurf, Roo Code, etc.) working in the **WA OTP** repository.
+This document defines the architecture and **operational rules** for all AI coding
+agents (Claude, Cursor, Antigravity, Copilot, Windsurf, Roo Code, etc.) working in the
+**WA OTP** repository.
 
 ---
 
-## 🚨 CRITICAL RULE: NEVER MERGE `feat/self-host` INTO `main`
+## What This Repository Is
+
+**WA OTP** is a free, open-source, **BYOK** (bring-your-own-keys) WhatsApp & Telegram
+OTP gateway. It is meant to be self-hosted by whoever needs it, using **their own** Meta
+WhatsApp Cloud API credentials and **their own** Telegram bot. The project operates no
+infrastructure on anyone's behalf, holds no shared credentials, and pays for no messages.
+
+Read [`README.md`](README.md) for the product, [`SECURITY.md`](SECURITY.md) for the
+threat model and hardening checklist, and [`docs/self-hosting.md`](docs/self-hosting.md)
+for deployment.
+
+---
+
+## 🚨 CRITICAL RULES
 
 > [!CAUTION]
-> **ABSOLUTE RULE FOR ALL AGENTS:**
-> **NEVER** merge branch `feat/self-host` into `main`.
-> **NEVER** run commands such as:
-> - `git merge feat/self-host` (while on `main`)
-> - `git checkout main && git merge ...`
-> - `gh pr merge 1`
-> - `git push origin feat/self-host:main`
->
-> The `main` branch powers an **active, live production deployment** on the public internet. Merging `feat/self-host` into `main` will trigger automated deployments and break the currently running hosted service for live users.
+> **1. NEVER commit credentials.** Every `.env` file is untracked. `backend/.env.example`
+> and `.env.example` contain placeholders only. If a real token, password, Fernet key,
+> webhook secret, phone number, or provider message id ever reaches a tracked file —
+> including a test fixture — treat it as public, rotate it, and say so plainly rather than
+> quietly deleting the file.
+
+> [!CAUTION]
+> **2. `main` is the trunk and it may be deployed.** This branch is the canonical
+> open-source project. If a deployment is attached to `main` (Render, Vercel, Dokku, a
+> VPS), then **every push to `main` ships to real users**. Confirm with the repository
+> owner whether a deployment is live before pushing. The migrations in
+> `backend/pocketbase/pb_migrations/` run against a real database when the service starts.
+
+> [!CAUTION]
+> **3. Never rewrite published history or force-push.** No `git push --force`,
+> `git reset --hard` on a shared branch, or amending commits that are already pushed. If
+> a secret or personal datum was committed, report it and let the owner decide.
+
+> [!CAUTION]
+> **4. Never perform a real send.** Tests use mock delivery and must not contact Meta,
+> Telegram, or any external service. Do not run scripts that send messages. Do not point
+> a script at a live PocketBase instance without the owner's explicit approval — a
+> read-only query against production still touches production.
 
 ---
 
-## Branch Architecture & Roles
+## Branch Model
 
-This repository operates with two distinct branch tracks:
+**Single trunk.** Work happens on `main` and on short-lived feature branches that merge
+back into it.
 
-| Branch | Purpose | Status | Deploy Target | Target Audience |
-|---|---|---|---|---|
-| **`main`** | **Hosted Live Service** | 🟢 ACTIVE PRODUCTION | Render / Vercel / Live VPS | Existing users testing the live hosted version |
-| **`feat/self-host`** | **Free & Self-Hostable Gateway** | 🛠️ SELF-HOST DEVELOPMENT | Docker Compose / Self-host VPS | Developers deploying on their own infrastructure |
+| Branch | Purpose |
+|---|---|
+| **`main`** | The canonical project. Every feature, fix and doc change lands here. |
+| **feature branches** | Short-lived, one concern each (`fix/quota-accounting`, `feat/byok-onboarding`). Deleted after merge. |
 
-### 1. The `main` Branch (Production Live)
-- **Model:** Hosted WhatsApp OTP SaaS / trial gateway.
-- **Characteristics:** Runs with hosted service configurations, live domains (`waotp.codaipro.com`, Render API), and shared hosted database.
-- **Rule:** Only critical production bug fixes may be made on `main`. Do NOT refactor or delete hosted service files on `main`.
-
-### 2. The `feat/self-host` Branch (Open-Source Self-Hosted)
-- **Model:** 100% Free & Open-Source, Self-Hostable OTP Gateway.
-- **Characteristics:**
-  - Zero dependency on `codaipro.com` or any private infrastructure.
-  - Providers abstracted (`app/providers/base.py`, `meta.py`).
-  - Configuration-first via root `.env.example` and `docker-compose.yml`.
-  - Hashed OTP storage (SHA-256), auto-invalidation on resend, rate limits, and non-root Docker security.
-  - Tracked under **Draft Pull Request #1**.
-- **Rule:** All self-hosting improvements, Docker enhancements, and open-source documentation must be committed **strictly** to `feat/self-host`.
+Long-lived product-variant branches are deliberately **not** used in this repository. The
+previous `main` / `feat/self-host` split was retired: it forced every security fix to be
+ported by hand, duplicated the same work on both sides, and left "which branch is the
+product?" genuinely ambiguous. If a product variant is ever needed, gate it with
+configuration — never with a branch.
 
 ---
 
 ## Instructions for AI Agents
 
-Whenever you start a task in this repository, follow this protocol:
+### Step 1: Understand what you are changing
+Read the code you are about to edit. Never propose a change to a file you have not read.
 
-### Step 1: Check Current Branch
-Before modifying any files or running commands, verify which branch is checked out:
+### Step 2: Check for existing work
 ```bash
-git branch --show-current
+git status && git log --oneline -10
 ```
+Do not overwrite uncommitted work. Do not write a second implementation of something that
+already exists.
 
-### Step 2: Understand User Intent
-- **If the user is asking about self-hosting, Docker, Meta credentials, open source, or local testing:**
-  - Verify you are on `feat/self-host`:
-    ```bash
-    git checkout feat/self-host
-    ```
-  - Commit all changes to `feat/self-host`.
-  - Push to `origin feat/self-host`.
-- **If the user is explicitly asking to fix or maintain the live production app:**
-  - Verify you are on `main`:
-    ```bash
-    git checkout main
-    ```
-  - Only make targeted hotfixes. **NEVER** cherry-pick or merge self-hosting breaking changes into `main`.
+### Step 3: Make the change
+- One concern per commit, conventional-commit style (`fix(quota): …`, `feat(docker): …`).
+- Add or update a regression test with every bug fix, and prove it fails without the fix.
+- Follow the patterns already present in the file you are editing.
 
-### Step 3: Verify Pull Request Status
-- Pull Request #1 is a **Draft Pull Request**.
-- **Do not mark it ready for review or merge it** unless the human repository owner explicitly types: `"Merge feat/self-host into main now"`.
+### Step 4: Verify before finishing
+Run the checks in the next section. **Never commit code that fails them**, and never
+weaken or skip a test to make a suite pass.
+
+### Step 5: Report honestly
+State what you changed, what you verified, and what you could **not** verify. If something
+is broken, partial, or untested, say so. Do not claim a security property you have not
+actually tested.
 
 ---
 
@@ -81,23 +99,42 @@ git branch --show-current
 ### Backend (`backend/`)
 ```bash
 cd backend
-./.venv/bin/pytest tests/ -q                 # Run all 87 tests (mock delivery, no external calls)
-./.venv/bin/uvicorn app.main:app --port 8000  # Run API locally
+.venv/bin/pytest -q                                    # full suite, no external calls
+.venv/bin/uvicorn app.main:app --port 8000 --workers 1
+.venv/bin/python scripts/create_admin.py you@example.com
+.venv/bin/python scripts/cleanup.py --dry-run          # retention preview
 ```
+
+`--workers 1` is a correctness requirement, not a tuning knob: the send and verify locks,
+the idempotency store, the rate limiters and the cached PocketBase token are all
+**process-global**. See `backend/README.md` → Concurrency.
 
 ### Frontend (`frontend/`)
 ```bash
 cd frontend
-npm run typecheck    # tsc --noEmit
-npm run lint         # oxlint
-npm run build        # Production Next.js build
+bun run typecheck     # tsc --noEmit
+bun run lint          # oxlint
+bun run format:check  # oxfmt
+bun run build         # production Next.js build
 ```
+
+`NEXT_PUBLIC_*` values are inlined at **build** time, and the app deliberately throws
+when `NEXT_PUBLIC_PB_URL` is missing rather than defaulting to somebody else's server.
+A build therefore needs those variables supplied.
+
+### CI
+[`.github/workflows/ci.yml`](.github/workflows/ci.yml) runs the backend suite, the
+frontend checks, a gitleaks scan over full history, and advisory dependency audits. A
+local check that disagrees with CI is a bug in the local check.
 
 ---
 
 ## Safety Checklist Before Finishing Any Turn
 
-1. [ ] Did I verify `git branch` is correct for the requested task?
-2. [ ] Did I avoid running `git merge` into `main`?
-3. [ ] Are all `.env` files and real API credentials kept out of git tracking?
-4. [ ] Did all tests pass (`pytest` and `tsc --noEmit`)?
+1. [ ] Did I avoid committing any real credential or personal datum?
+2. [ ] Did I add or update a regression test, and prove it fails without the fix?
+3. [ ] Do `pytest`, `typecheck`, `lint` and `format:check` all pass?
+4. [ ] If a migration is involved, is it still correct for an install that already holds
+       data — not only for a fresh one?
+5. [ ] If this touches `main`, does the owner know a deployment may ship it?
+6. [ ] Did I state clearly what I could not verify?

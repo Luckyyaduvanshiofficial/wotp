@@ -4,6 +4,7 @@ import { SiteNav } from '@/features/landing/components/site-nav';
 import { SiteFooter } from '@/features/landing/components/site-footer';
 import { GITHUB_URL } from '@/features/landing/components/github-star';
 import { Icons } from '@/components/icons';
+import { SITE_URL } from '@/lib/site';
 
 export const metadata: Metadata = {
   title: 'Report a Bug — WA OTP Gateway Issue Tracker',
@@ -12,7 +13,7 @@ export const metadata: Metadata = {
   openGraph: {
     title: 'Report a Bug — WA OTP Gateway Issue Tracker',
     description: 'Found an issue with WA OTP Gateway? Submit a bug report on GitHub.',
-    url: 'https://waotp.codaipro.com/report-bug',
+    url: `${SITE_URL}/report-bug`,
     siteName: 'WA OTP',
     type: 'website'
   }
@@ -34,8 +35,8 @@ export default function ReportBugPage() {
             <em>report</em> an issue or bug.
           </h1>
           <p className='lm-lede'>
-            We strive for zero defects and total engineering transparency. If you encounter an error,
-            unexpected behavior, or a documentation gap, please submit an issue on GitHub.
+            We strive for zero defects and total engineering transparency. If you encounter an
+            error, unexpected behavior, or a documentation gap, please submit an issue on GitHub.
           </p>
           <div className='lm-actions'>
             <a
@@ -63,8 +64,8 @@ export default function ReportBugPage() {
               quick troubleshooting before filing.
             </h2>
             <p className='lm-lede'>
-              Many delivery or auth errors arise from minor environment misconfigurations.
-              Check these common points first:
+              Many delivery or auth errors arise from minor environment misconfigurations. Check
+              these common points first:
             </p>
           </div>
 
@@ -75,8 +76,9 @@ export default function ReportBugPage() {
                 1. Check Mock Delivery Setting
               </h3>
               <p className='text-xs text-[var(--color-ink-muted)] leading-relaxed'>
-                If messages are written to the database but no real WhatsApp/Telegram message arrives, verify if{' '}
-                <code>WAOTP_MOCK_DELIVERY=1</code> is set. Set it to <code>0</code> for live dispatch.
+                If messages are written to the database but no real WhatsApp/Telegram message
+                arrives, verify if <code>WAOTP_MOCK_DELIVERY=1</code> is set. Set it to{' '}
+                <code>0</code> for live dispatch.
               </p>
             </div>
 
@@ -86,8 +88,8 @@ export default function ReportBugPage() {
                 2. Verify API Key Header
               </h3>
               <p className='text-xs text-[var(--color-ink-muted)] leading-relaxed'>
-                Calls to <code>/v1/otp/send</code> and <code>/v1/otp/verify</code> require the secret key in the{' '}
-                <code>X-Api-Key</code> header, NOT the bearer Authorization token.
+                Calls to <code>/v1/otp/send</code> and <code>/v1/otp/verify</code> require the
+                secret key in the <code>X-Api-Key</code> header, NOT the bearer Authorization token.
               </p>
             </div>
 
@@ -97,8 +99,9 @@ export default function ReportBugPage() {
                 3. Rate Limits & Mutual Exclusions
               </h3>
               <p className='text-xs text-[var(--color-ink-muted)] leading-relaxed'>
-                When you resend an OTP to the same phone number, prior active codes are automatically invalidated.
-                Sending more than 5 OTPs per hour to one phone number triggers HTTP 429.
+                When you resend an OTP to the same phone number, prior active codes are
+                automatically invalidated. Sending more than 5 OTPs per hour to one phone number
+                triggers HTTP 429.
               </p>
             </div>
 
@@ -108,7 +111,11 @@ export default function ReportBugPage() {
                 4. Test in Interactive Sandbox
               </h3>
               <p className='text-xs text-[var(--color-ink-muted)] leading-relaxed'>
-                Use the <Link href='/dashboard/tester' className='text-[var(--color-accent)] underline'>Dashboard OTP Tester</Link> to isolate whether the issue is with your client code or the server environment.
+                Use the{' '}
+                <Link href='/dashboard/tester' className='text-[var(--color-accent)] underline'>
+                  Dashboard OTP Tester
+                </Link>{' '}
+                to isolate whether the issue is with your client code or the server environment.
               </p>
             </div>
           </div>
@@ -129,9 +136,12 @@ export default function ReportBugPage() {
                 <span className='inline-block rounded bg-red-500/10 px-2 py-0.5 text-[11px] font-mono font-semibold text-red-600 dark:text-red-400'>
                   Bug Report
                 </span>
-                <h3 className='font-semibold text-base text-[var(--color-ink)]'>API or UI Glitch</h3>
+                <h3 className='font-semibold text-base text-[var(--color-ink)]'>
+                  API or UI Glitch
+                </h3>
                 <p className='text-xs text-[var(--color-ink-muted)] leading-relaxed'>
-                  Report unexpected HTTP responses, schema errors, or rendering problems in the dashboard.
+                  Report unexpected HTTP responses, schema errors, or rendering problems in the
+                  dashboard.
                 </p>
               </div>
               <a
@@ -150,9 +160,12 @@ export default function ReportBugPage() {
                 <span className='inline-block rounded bg-sky-500/10 px-2 py-0.5 text-[11px] font-mono font-semibold text-sky-600 dark:text-sky-400'>
                   Feature Request
                 </span>
-                <h3 className='font-semibold text-base text-[var(--color-ink)]'>New Channel or Tool</h3>
+                <h3 className='font-semibold text-base text-[var(--color-ink)]'>
+                  New Channel or Tool
+                </h3>
                 <p className='text-xs text-[var(--color-ink-muted)] leading-relaxed'>
-                  Propose new notification channels (e.g. Discord, RCS, Twilio fallback) or dashboard enhancements.
+                  Propose new notification channels (e.g. Discord, RCS, Twilio fallback) or
+                  dashboard enhancements.
                 </p>
               </div>
               <a
@@ -171,9 +184,12 @@ export default function ReportBugPage() {
                 <span className='inline-block rounded bg-amber-500/10 px-2 py-0.5 text-[11px] font-mono font-semibold text-amber-600 dark:text-amber-400'>
                   Security Disclosure
                 </span>
-                <h3 className='font-semibold text-base text-[var(--color-ink)]'>Vulnerability Report</h3>
+                <h3 className='font-semibold text-base text-[var(--color-ink)]'>
+                  Vulnerability Report
+                </h3>
                 <p className='text-xs text-[var(--color-ink-muted)] leading-relaxed'>
-                  Found a security or cryptography flaw? Please report it responsibly directly to the lead maintainer.
+                  Found a security or cryptography flaw? Please report it responsibly directly to
+                  the lead maintainer.
                 </p>
               </div>
               <a

@@ -20,17 +20,24 @@ from ..core.errors import (
     UpstreamUnavailable,
     error_responses,
 )
-from ..core.security import generate_otp_code, make_link_token, normalize_phone
-from ..dependencies import idempotency_store, key_lock, require_api_key, verify_lock
-from ..services import meta as meta_service
+from ..core.security import (
+    generate_otp_code,
+    make_link_token,
+    mask_phone,
+    normalize_phone,
+)
+from ..core.tracing import get_request_id
+from ..dependencies import idempotency_store, owner_lock, require_api_key, verify_lock
+from ..providers import ProviderError, build_whatsapp_provider
 from ..services import telegram as telegram_service
 from ..services.otp import create_otp, verify_otp
-from ..services.pocketbase import PocketBaseError, wa_collection
+from ..services.pocketbase import wa_collection
 from ..services.quota import (
     month_window,
     monthly_used,
     phone_sends_last_hour,
     reset_utc_iso,
+    sent_within,
 )
 from ..services.settings import get_app_settings
 
@@ -60,13 +67,16 @@ class VerifyIn(BaseModel):
 
 class SendOut(BaseModel):
     ok: bool
-    mode: str
     channel: str
     request_id: str
-    wa_message_id: str
+    # Provider message id (WhatsApp wamid / Telegram message id). Named
+    # generically because the field is channel-independent.
+    message_id: str
     expires_in: int
-    free_used: int
-    free_limit: int
+    # Monthly sends used and the configured cap for THIS installation.
+    # `limit` is 0 when the operator has set no cap.
+    used: int
+    limit: int
     reset_utc: str
 
 
@@ -76,7 +86,6 @@ class VerifyOut(BaseModel):
 
 
 class UsageOut(BaseModel):
-    plan: str
     used: int
     limit: int
     reset_utc: str
@@ -117,58 +126,74 @@ async def send_otp(
     now = _utcnow()
 
     # Serialize the whole send (quota check -> throttle check -> provider
-    # delivery -> ledger writes) per API key. The lock intentionally spans the
+    # delivery -> ledger writes) per OWNER. The lock intentionally spans the
     # provider await: without it, two concurrent sends could both pass the
     # quota/throttle checks before either wrote its ledger rows.
-    async with key_lock(api_key["id"]):
+    #
+    # Owner-scoped rather than key-scoped because the cap and the throttle are
+    # owner-scoped, and one owner may hold several active keys (up to
+    # MAX_ACTIVE_KEYS_PER_OWNER). Keying on the key id would leave the
+    # double-spend open across any two of them.
+    async with owner_lock(owner["id"]):
         # Idempotency replay: a retry with the same Idempotency-Key inside
         # the code's lifetime returns the original response instead of
-        # double-sending. Checked inside the per-key lock so a concurrent
+        # double-sending. Checked inside the per-owner lock so a concurrent
         # duplicate waits for — and then replays — the first send.
         if idem is not None:
             replayed = idempotency_store.get((api_key["id"], idem))
             if replayed is not None:
-                return JSONResponse(content=replayed, headers={"Idempotency-Replayed": "true"})
+                replayed_status, replayed_body = replayed
+                return JSONResponse(
+                    status_code=replayed_status,
+                    content=replayed_body,
+                    headers={"Idempotency-Replayed": "true"},
+                )
 
-        # Monthly quota counts WhatsApp-delivered sends only; Telegram is
-        # unlimited and free (PRD §7) so it never hits this gate.
+        # Monthly cap counts WhatsApp-delivered sends only; Telegram is not
+        # metered against it. A cap of 0 means the operator set no limit.
+        quota = cfg["monthly_send_quota"]
         used = await monthly_used(pb, owner["id"], now)
-        if body.channel == "whatsapp" and used >= cfg["free_monthly_limit"]:
+        if body.channel == "whatsapp" and quota > 0 and used >= quota:
             retry_after = max(60, int((month_window(now)[1] - now).total_seconds()))
             raise QuotaExceeded(
-                free_used=used,
-                free_limit=cfg["free_monthly_limit"],
+                used=used,
+                limit=quota,
                 reset_utc=reset_utc_iso(now),
                 headers={"Retry-After": str(retry_after)},
             )
 
-        # Per-phone throttle stays for BOTH channels (victim-number protection).
+        # Per-phone throttle stays for BOTH channels (victim-number protection):
+        # the harm of bombarding one number is identical on either channel.
         recent = await phone_sends_last_hour(pb, owner["id"], phone, now)
         if recent >= cfg["per_phone_hourly"]:
             raise PhoneThrottled(retry_after_seconds=3600)
 
-        # 6-digit platform code, or the caller's custom code.
-        code = body.code or generate_otp_code()
+        # Optional minimum gap between sends to the same number. Off (0) by
+        # default because the hourly throttle already bounds the rate; operators
+        # who want resend-specific pacing turn this on.
+        cooldown = cfg["resend_cooldown_seconds"]
+        if cooldown > 0 and await sent_within(pb, owner["id"], phone, cooldown, now):
+            # Retry-After reports the full cooldown rather than the exact
+            # remainder: the remainder would mean reading back a timestamp to
+            # subtract, and an over-estimate only makes a caller wait longer.
+            raise PhoneThrottled(retry_after_seconds=int(cooldown))
+
+        code = body.code or generate_otp_code(cfg["otp_length"])
 
         provider_message_id = ""
         mock = get_mock_delivery(request)
         if body.channel == "whatsapp":
-            if not mock and (not cfg["meta_phone_number_id"] or not cfg["meta_token"]):
-                raise NotConfigured(detail="WhatsApp is not configured yet (settings collection)")
             if mock:
                 provider_message_id = f"mock-{uuid.uuid4().hex[:12]}"
             else:
+                if not cfg["meta_phone_number_id"] or not cfg["meta_token"]:
+                    raise NotConfigured(detail="WhatsApp is not configured yet")
+                provider = build_whatsapp_provider(cfg)
                 try:
-                    provider_message_id = await meta_service.send_otp_template(
-                        request.app.state.http,
-                        cfg["meta_phone_number_id"],
-                        cfg["meta_token"],
-                        phone,
-                        code,
-                        cfg["meta_template"],
-                        cfg["meta_template_lang"],
+                    provider_message_id = await provider.send_otp(
+                        request.app.state.http, phone, code, cfg["code_ttl_seconds"]
                     )
-                except meta_service.MetaError as exc:
+                except ProviderError as exc:
                     await _log_failure(pb, owner, api_key, phone, "whatsapp", exc.message)
                     raise DeliveryFailed(
                         channel="whatsapp", detail=exc.message[:300], retryable=exc.retryable
@@ -177,10 +202,16 @@ async def send_otp(
             links = await pb.list(wa_collection("tg_links"), filter=f"phone='{phone}'", per_page=1)
             items = links.get("items") or []
             if not items:
+                # The deep link must name the operator's own bot. Guessing a
+                # username here would send users to an unrelated bot, so an
+                # unconfigured bot is reported as a configuration problem.
+                bot_username = (cfg["tg_bot_username"] or "").lstrip("@")
+                if not bot_username:
+                    raise NotConfigured(
+                        detail="Telegram bot is not configured yet (settings collection)"
+                    )
                 link_token = make_link_token(owner["id"], phone)
-                raise NotLinked(
-                    link_url=f"https://t.me/{cfg['tg_bot_username'] or 'waotp_bot'}?start={link_token}"
-                )
+                raise NotLinked(link_url=f"https://t.me/{bot_username}?start={link_token}")
             if not mock and not cfg["tg_bot_token"]:
                 raise NotConfigured(detail="Telegram bot is not configured yet (settings collection)")
             chat_id = items[0]["chat_id"]
@@ -202,9 +233,21 @@ async def send_otp(
                     ) from exc
 
         # Delivered: append audit row + store the hashed code (single-use).
-        # Known limitation: if these writes fail the code WAS delivered — a
-        # plain client retry may double-send (reconcile manually via
-        # wa_message_id); a retry carrying the same Idempotency-Key is safe.
+        #
+        # Ordering, and what it does and does not guarantee: the provider has
+        # already accepted the message by the time we get here, so these two
+        # writes are bookkeeping. They cannot be made atomic with the provider
+        # call — that is a property of talking to an external system, not
+        # something more code can fix — so instead the failure is made
+        # *replayable*: the error body is cached under the caller's
+        # Idempotency-Key, and a retry with that key gets the original error
+        # back instead of putting a second code on the user's phone.
+        #
+        # Broad on purpose: an httpx transport error here (PocketBase
+        # unreachable, connection reset) is the same situation as a rejected
+        # write — the message was delivered — and letting it escape would label
+        # a delivered send as 503 upstream_unavailable, which invites exactly
+        # the retry that double-sends.
         try:
             row = await pb.create(
                 wa_collection("messages"),
@@ -215,45 +258,63 @@ async def send_otp(
                     "channel": body.channel,
                     "wa_message_id": provider_message_id,
                     "status": "sent",
-                    "cost_type": "free",
                     "error": "",
+                    # Usage is recorded here, at the moment the provider
+                    # accepted the message, and is never written again. Status
+                    # callbacks (sent -> delivered/read/failed) update `status`
+                    # only, so the monthly count cannot be reduced by a
+                    # callback — see services/quota.py::monthly_used.
+                    "billable": body.channel == "whatsapp",
                 },
             )
             await create_otp(
                 pb, owner["id"], api_key["id"], phone, code, cfg["code_ttl_seconds"], now
             )
-        except PocketBaseError as exc:
+        except Exception as exc:
             logger.critical(
                 "ledger write failed after delivery — reconcile wa_message_id=%s "
-                "channel=%s owner=%s phone=%s",
+                "channel=%s owner=%s phone=%s request_id=%s",
                 provider_message_id,
                 body.channel,
                 owner["id"],
-                phone,
+                mask_phone(phone),
+                get_request_id() or "(none)",
                 exc_info=exc,
             )
-            raise DeliveryFailed(
+            failure = DeliveryFailed(
                 channel=body.channel,
                 detail="delivered but not recorded; manual reconciliation required",
-            ) from exc
+            )
+            if idem is not None:
+                # Replaying this error is what stops the retry from
+                # double-sending. Cached for the code's lifetime, like a success.
+                idempotency_store.put(
+                    (api_key["id"], idem),
+                    failure.status_code,
+                    failure.body(),
+                    cfg["code_ttl_seconds"],
+                )
+            raise failure from exc
 
     response_body = {
         "ok": True,
-        "mode": "platform",
         "channel": body.channel,
         "request_id": row["id"],
-        "wa_message_id": provider_message_id,
+        "message_id": provider_message_id,
         "expires_in": cfg["code_ttl_seconds"],
-        # Telegram sends do not consume quota: report the current WhatsApp count.
-        "free_used": used + 1 if body.channel == "whatsapp" else used,
-        "free_limit": cfg["free_monthly_limit"],
+        # Telegram sends do not consume the WhatsApp cap: report the current count.
+        "used": used + 1 if body.channel == "whatsapp" and quota > 0 else used,
+        "limit": quota,
         "reset_utc": reset_utc_iso(now),
     }
     if idem is not None:
         # Replay window = the code's lifetime; past expiry a retry must send
-        # a fresh code, not replay a dead one. Only successes are cached —
-        # failed sends stay retryable.
-        idempotency_store.put((api_key["id"], idem), response_body, cfg["code_ttl_seconds"])
+        # a fresh code, not replay a dead one. Only successes and the
+        # delivered-but-unrecorded failure are cached — ordinary failures stay
+        # retryable.
+        idempotency_store.put(
+            (api_key["id"], idem), 200, response_body, cfg["code_ttl_seconds"]
+        )
     return response_body
 
 
@@ -298,9 +359,8 @@ async def usage(request: Request, ctx=Depends(require_api_key)):
     now = _utcnow()
     used = await monthly_used(request.app.state.pb, ctx["owner"]["id"], now)
     return {
-        "plan": ctx["owner"].get("plan") or "free",
         "used": used,
-        "limit": ctx["config"]["free_monthly_limit"],
+        "limit": ctx["config"]["monthly_send_quota"],
         "reset_utc": reset_utc_iso(now),
     }
 
@@ -326,14 +386,18 @@ async def _log_failure(pb, owner, api_key, phone, channel, error):
                 "channel": channel,
                 "wa_message_id": "",
                 "status": "failed",
-                "cost_type": "free",
                 "error": (error or "")[:500],
+                # The provider rejected this before accepting it, so it is not
+                # usage. Explicit false rather than omitted: a missing field
+                # would be indistinguishable from an old row during backfill.
+                "billable": False,
             },
         )
     except Exception:
         logger.critical(
             "audit row for failed send could not be written — channel=%s "
-            "owner=%s phone=%s error=%s",
-            channel, owner["id"], phone, (error or "")[:300],
+            "owner=%s phone=%s request_id=%s error=%s",
+            channel, owner["id"], mask_phone(phone), get_request_id() or "(none)",
+            (error or "")[:300],
             exc_info=True,
         )

@@ -17,7 +17,7 @@ from fastapi import APIRouter, Header, Request
 from fastapi.responses import JSONResponse
 
 from ..core.config import get_settings
-from ..core.security import normalize_phone, parse_link_token
+from ..core.security import mask_phone, normalize_phone, parse_link_token
 from ..services import telegram as telegram_service
 from ..services.pocketbase import PocketBaseError, wa_collection
 from ..services.settings import get_app_settings
@@ -139,7 +139,9 @@ async def _handle_contact(request, cfg, bot_token, http, chat_id, sender, contac
             )
     except PocketBaseError as exc:
         # 503 so Telegram retries the update — a link must never be silently lost.
-        logger.exception("tg_links upsert failed (phone=%s, chat_id=%s)", phone, chat_id)
+        logger.exception(
+            "tg_links upsert failed (phone=%s, chat_id=%s)", mask_phone(phone), chat_id
+        )
         return JSONResponse(
             status_code=503, content={"ok": False, "error": "upstream_unavailable"}
         )

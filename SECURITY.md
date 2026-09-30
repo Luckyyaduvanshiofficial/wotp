@@ -59,11 +59,14 @@ If you are self-hosting, this is the short list that matters most.
 > Deleting the file is not enough. Git history retains it, and scrapers watch public pushes and pick up credentials within seconds. Treat any secret that has touched a repository, a screenshot, a chat, or a log as already public.
 
 - [ ] **Rotate on any suspicion.** The PocketBase superuser password; `WAOTP_FERNET_KEY` (rotating it means re-entering the Meta token into the `settings` row, since the old ciphertext can no longer be decrypted); `TELEGRAM_WEBHOOK_SECRET` (re-run `scripts/set_telegram_webhook.py`).
-- [ ] **Keep PocketBase off the public internet.** Bind it to `127.0.0.1` or put it behind a firewall. Customers talk to FastAPI and nothing else.
+- [ ] **Keep PocketBase off the public internet.** The compose stack already binds it to `127.0.0.1`; if you changed that, put a firewall or a proxy in front. Customers talk to FastAPI and nothing else. Reach the admin UI over an SSH tunnel.
+- [ ] **Set `META_APP_SECRET`.** The API refuses to boot in production without it when WhatsApp credentials are configured, because unsigned webhook callbacks can be forged by anyone who learns the URL.
 - [ ] **Set `WAOTP_MOCK_DELIVERY=0` in production.** Left at `1`, delivery is faked — which is exactly the kind of thing that is discovered by a user who never received their code.
 - [ ] **Put the backend behind TLS.** All of it — the API, the dashboard, and the PocketBase admin UI if it is reachable at all.
 - [ ] **Restrict CORS.** Set `DASHBOARD_ORIGIN` to your dashboard's origin specifically, not `*`.
-- [ ] **Back up `pb_data/`.** The `wallet_txns` ledger is real money. Use Litestream or a daily copy, and do a restore drill before you go public.
+- [ ] **Set `TRUST_PROXY_HEADERS=1` only behind a proxy you control,** and only one that does not forward a client-supplied `X-Forwarded-For` verbatim. It is what makes the per-IP limit meaningful rather than bypassable.
+- [ ] **Back up `pb_data/`.** The audit log is the record of what was sent and to whom. Use Litestream or a daily copy, and do a restore drill before you go public.
+- [ ] **Schedule `scripts/cleanup.py`** so expired OTP codes and old audit rows do not accumulate forever. Decide your retention window deliberately — it is a privacy choice, not only a storage one.
 - [ ] **Set a strong `TELEGRAM_WEBHOOK_SECRET`** and register the webhook with it, so the webhook endpoint is not openly callable.
-- [ ] **Serve API keys to servers, never browsers.** Every key is a spending credential. Integrators must call the API from their backend.
+- [ ] **Serve API keys to servers, never browsers.** Every key is a spending credential. Integrators must call the API from their backend, and the dashboard's own tester keeps its key in memory only for that reason.
 - [ ] **Watch the `messages` collection** for a failure-rate spike. It is the earliest signal of both a Meta policy problem and an abuse attempt.

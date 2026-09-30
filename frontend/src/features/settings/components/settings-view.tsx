@@ -16,6 +16,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
 import { z } from 'zod';
+import { TEMP_MAIL_ENABLED, TEMP_MAIL_URL } from '@/lib/temp-mail';
 
 const profileSchema = z.object({
   name: z.string().min(1, 'Name is required').max(64, 'Name is too long')
@@ -94,11 +95,7 @@ function ProfileFormCard() {
             <form.AppField
               name='name'
               children={(field) => (
-                <field.TextField
-                  label='Display Name'
-                  placeholder='e.g. Lucky Developer'
-                  required
-                />
+                <field.TextField label='Display Name' placeholder='e.g. Lucky Developer' required />
               )}
             />
             <div className='flex items-center gap-3'>
@@ -241,15 +238,6 @@ function AppearanceCard() {
   );
 }
 
-function handleClearTesterStorage() {
-  try {
-    localStorage.removeItem('waotp_tester_key');
-    toast.success('Tester local API key cache cleared');
-  } catch {
-    toast.error('Could not clear local storage');
-  }
-}
-
 function GatewayPreferencesCard() {
   return (
     <Card className='border shadow-sm'>
@@ -259,7 +247,7 @@ function GatewayPreferencesCard() {
           Developer Gateway Preferences
         </CardTitle>
         <CardDescription className='text-xs'>
-          Configuration shortcuts and local client storage
+          Configuration shortcuts and client-side behaviour
         </CardDescription>
       </CardHeader>
       <CardContent className='p-4 sm:p-6 space-y-4 text-xs sm:text-sm'>
@@ -297,20 +285,19 @@ function GatewayPreferencesCard() {
 
         <div className='flex flex-wrap items-center justify-between gap-2 pt-1'>
           <div>
-            <p className='font-medium text-foreground'>Reset Tester Cache</p>
+            <p className='font-medium text-foreground'>Tester API Key</p>
             <p className='text-muted-foreground text-xs'>
-              Wipe locally stored API keys from this browser&apos;s localStorage
+              The OTP Tester holds a key in memory for the current tab only — nothing is written to
+              browser storage, so there is no cache to clear.
             </p>
           </div>
-          <Button
-            variant='outline'
-            size='sm'
-            onClick={handleClearTesterStorage}
-            className='text-xs'
+          <Link
+            href='/dashboard/tester'
+            className='inline-flex items-center gap-1 font-semibold text-primary hover:underline text-xs'
           >
-            <Icons.trash className='size-3.5 mr-1.5 text-muted-foreground' />
-            Clear Cache
-          </Button>
+            <span>Open Tester</span>
+            <Icons.arrowRight className='size-3' />
+          </Link>
         </div>
       </CardContent>
     </Card>
@@ -362,12 +349,12 @@ function UserSidebarCard({ onSignOut }: { onSignOut: () => void }) {
           {email}
         </CardDescription>
         <div className='mt-3 flex flex-wrap items-center justify-center gap-1.5'>
-          <Badge variant='outline' className='border-emerald-500/30 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 text-[11px] gap-1'>
+          <Badge
+            variant='outline'
+            className='border-emerald-500/30 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 text-[11px] gap-1'
+          >
             <span className='size-1.5 rounded-full bg-emerald-500' />
             {user?.status || 'Active'}
-          </Badge>
-          <Badge variant='secondary' className='text-[11px] uppercase'>
-            {user?.plan || 'Free Tier'}
           </Badge>
         </div>
       </CardHeader>
@@ -377,7 +364,9 @@ function UserSidebarCard({ onSignOut }: { onSignOut: () => void }) {
         <div className='flex items-center justify-between py-1'>
           <span className='text-muted-foreground'>Account ID</span>
           <div className='flex items-center gap-1'>
-            <span className='font-mono text-[11px]'>{user?.id ? `${user.id.slice(0, 8)}…` : '—'}</span>
+            <span className='font-mono text-[11px]'>
+              {user?.id ? `${user.id.slice(0, 8)}…` : '—'}
+            </span>
             {user?.id && <CopyButton value={user.id} className='size-6 p-0 text-[10px]' />}
           </div>
         </div>
@@ -385,18 +374,20 @@ function UserSidebarCard({ onSignOut }: { onSignOut: () => void }) {
           <span className='text-muted-foreground'>Telegram Channel</span>
           <span className='font-medium text-sky-600 dark:text-sky-400'>Unmetered</span>
         </div>
-        <div className='flex items-center justify-between py-1'>
-          <span className='text-muted-foreground'>Companion Tool</span>
-          <a
-            href='https://tempmail.codaipro.com/'
-            target='_blank'
-            rel='noopener noreferrer'
-            className='font-medium text-primary hover:underline inline-flex items-center gap-1'
-          >
-            <span>TempMail</span>
-            <Icons.externalLink className='size-2.5' />
-          </a>
-        </div>
+        {TEMP_MAIL_ENABLED && (
+          <div className='flex items-center justify-between py-1'>
+            <span className='text-muted-foreground'>Companion Tool</span>
+            <a
+              href={TEMP_MAIL_URL}
+              target='_blank'
+              rel='noopener noreferrer'
+              className='font-medium text-primary hover:underline inline-flex items-center gap-1'
+            >
+              <span>TempMail</span>
+              <Icons.externalLink className='size-2.5' />
+            </a>
+          </div>
+        )}
       </CardContent>
 
       <CardContent className='p-4 sm:p-6 pt-0 border-t bg-muted/10'>

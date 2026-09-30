@@ -8,6 +8,16 @@ export const navGroups: NavGroup[] = [
     label: 'Platform',
     items: [
       {
+        // First, because on a self-hosted install "is this box wired up?" is
+        // the first question an operator has, ahead of any metric.
+        title: 'Setup',
+        url: '/dashboard/onboarding',
+        icon: 'badgeCheck',
+        shortcut: ['d', 'n'],
+        isActive: false,
+        items: []
+      },
+      {
         title: 'Overview',
         url: '/dashboard',
         icon: 'dashboard',

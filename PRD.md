@@ -199,12 +199,12 @@ verification code...`, Copy Code button) → allow-list 5 real numbers → fill 
 
 | Piece | Where | Notes |
 |---|---|---|
-| PocketBase | Existing VPS (`pb.codaipro.com`) | systemd binary behind Caddy, bound to localhost. **Shared with another project** — wa-otp is namespaced by `WAOTP_PB_COLLECTIONS_PREFIX=waotp_` plus its own `waotp_users` auth collection; the other project's `users`/`api_keys` are never addressed |
-| FastAPI hot path | Render at `api-waotp.codaipro.com` (`render.yaml`, Blueprint) | Free plan, `rootDir: backend`. Must run `--workers 1` — locks, idempotency store and the cached PB token are all per-process |
-| HTTPS | Render + Caddy | Render terminates TLS for the API; Caddy fronts PocketBase. No `api.…` vhost needed |
-| Next.js site/dashboard | Vercel free tier at `waotp.codaipro.com` | Root Directory `frontend/` (no root `package.json`); env `NEXT_PUBLIC_PB_URL`, `NEXT_PUBLIC_API_URL`, … |
-| Backups | Litestream → S3-compatible (or daily `pb_data` copy) | The wallet ledger is real money — non-negotiable |
-| Monitoring | UptimeRobot on `/v1/health` + PocketBase logs | Alert on failure rate > 5%. `/v1/health` probes PocketBase, so it is a true end-to-end check — and for that same reason it must **not** be Render's `healthCheckPath` |
+| PocketBase | Self-hosted VPS (`pb.example.com` or local Docker) | systemd binary or Docker behind Caddy/Nginx, bound to localhost. Namespaced by `WAOTP_PB_COLLECTIONS_PREFIX=waotp_` plus its own `waotp_users` auth collection |
+| FastAPI hot path | Self-hosted VPS or PaaS (`api.example.com`) | `rootDir: backend`. Must run `--workers 1` — locks, idempotency store and the cached PB token are all per-process |
+| HTTPS | Reverse proxy (Caddy/Nginx) | Reverse proxy terminates TLS for API and PocketBase |
+| Next.js site/dashboard | Self-hosted or PaaS (`otp.example.com`) | Root Directory `frontend/`; env `NEXT_PUBLIC_PB_URL`, `NEXT_PUBLIC_API_URL`, … |
+| Backups | Litestream → S3-compatible (or daily `pb_data` copy) | Audit and OTP ledger |
+| Monitoring | Uptime monitor on `/health` + PocketBase logs | Alert on failure rate > 5%. `/health/ready` probes PocketBase |
 
 PocketBase stays on the VPS rather than moving with the API: it is the system of record for
 the wallet ledger and is already serving another project, so relocating it is a migration

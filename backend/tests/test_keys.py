@@ -76,7 +76,7 @@ def test_dashboard_usage(client):
     r = c.get("/v1/usage", headers=USER_TOKEN)
     assert r.status_code == 200
     body = r.json()
-    assert body == {"plan": "free", "used": 0, "limit": 500, "reset_utc": body["reset_utc"]}
+    assert body == {"used": 0, "limit": 500, "reset_utc": body["reset_utc"]}
 
 
 # ---- key cap + deactivate + cache invalidation ----
@@ -109,7 +109,7 @@ def test_deactivate_key_is_owner_scoped(client):
 
     issued = c.post("/v1/keys", json={"label": "mine"}, headers=USER_TOKEN).json()
     fake.records["users"]["usr2"] = {
-        "id": "usr2", "email": "other@example.com", "plan": "free", "status": "active",
+        "id": "usr2", "email": "other@example.com", "status": "active",
     }
     fake.records["api_keys"]["other1"] = {
         "id": "other1", "owner": "usr2", "key_hash": "f" * 64, "last4": "abcd",
@@ -178,7 +178,7 @@ def test_delete_key_is_owner_scoped(client):
 
     # someone else's key -> 404 (existence not leaked), untouched
     fake.records["users"]["usr2"] = {
-        "id": "usr2", "email": "other@example.com", "plan": "free", "status": "active",
+        "id": "usr2", "email": "other@example.com", "status": "active",
     }
     fake.records["api_keys"]["other1"] = {
         "id": "other1", "owner": "usr2", "key_hash": "f" * 64, "last4": "abcd",

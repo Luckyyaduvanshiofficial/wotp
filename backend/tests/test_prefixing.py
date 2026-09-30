@@ -23,8 +23,7 @@ def test_every_waotp_collection_is_prefixed(prefixed_settings):
     from app.services.pocketbase import wa_collection
 
     for logical in (
-        "users", "api_keys", "otp_codes", "messages",
-        "wallet_txns", "rate_cards", "tg_links", "settings",
+        "users", "api_keys", "otp_codes", "messages", "tg_links", "settings",
     ):
         assert wa_collection(logical) == f"waotp_{logical}", logical
 

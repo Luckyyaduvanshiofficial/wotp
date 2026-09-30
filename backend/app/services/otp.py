@@ -9,6 +9,27 @@ from .pocketbase import wa_collection
 from .quota import pb_date
 
 
+async def expire_previous_otps(pb, owner_id: str, phone: str, now: datetime) -> None:
+    """Mark any prior OTP codes for this phone as expired so only the newest is active."""
+    try:
+        res = await pb.list(
+            wa_collection("otp_codes"),
+            filter=f"owner='{owner_id}' && phone='{phone}' && expires>'{pb_date(now)}'",
+            per_page=50,
+        )
+        for item in res.get("items") or []:
+            try:
+                await pb.update(
+                    wa_collection("otp_codes"),
+                    item["id"],
+                    {"expires": (now - timedelta(seconds=1)).strftime("%Y-%m-%d %H:%M:%S")},
+                )
+            except Exception:
+                pass
+    except Exception:
+        pass
+
+
 async def create_otp(
     pb,
     owner_id: str,
@@ -18,6 +39,7 @@ async def create_otp(
     ttl_seconds: int,
     now: datetime,
 ) -> dict:
+    await expire_previous_otps(pb, owner_id, phone, now)
     expires = now + timedelta(seconds=ttl_seconds)
     return await pb.create(
         wa_collection("otp_codes"),

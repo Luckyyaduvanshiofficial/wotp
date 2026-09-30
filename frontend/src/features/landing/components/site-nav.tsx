@@ -24,11 +24,11 @@ export async function SiteNav() {
       </Link>
       <GithubStar stars={stars} />
       <ThemeToggle />
+      {/* No "start free" CTA. Sign in stays — it is the operator's own way into
+          the dashboard. The call to action is the repository, which the
+          env-driven GitHub link above already provides. */}
       <Link href='/login' className='lm-nav__link lm-nav__link--drop'>
         sign in
-      </Link>
-      <Link href='/signup' className='lm-nav__cta'>
-        start free
       </Link>
     </nav>
   );

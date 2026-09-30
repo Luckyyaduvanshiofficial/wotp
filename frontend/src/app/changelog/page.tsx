@@ -3,6 +3,7 @@ import Link from 'next/link';
 import { SiteNav } from '@/features/landing/components/site-nav';
 import { SiteFooter } from '@/features/landing/components/site-footer';
 import { GITHUB_URL } from '@/features/landing/components/github-star';
+import { SITE_URL } from '@/lib/site';
 
 export const metadata: Metadata = {
   title: 'Changelog — WA OTP Gateway Releases & Updates',
@@ -11,7 +12,7 @@ export const metadata: Metadata = {
   openGraph: {
     title: 'Changelog — WA OTP Gateway Releases & Updates',
     description: 'Track updates, improvements, and releases for WA OTP Gateway.',
-    url: 'https://waotp.codaipro.com/changelog',
+    url: `${SITE_URL}/changelog`,
     siteName: 'WA OTP',
     type: 'website'
   }
@@ -74,15 +75,20 @@ export default function ChangelogPage() {
             <em>changelog</em> & product updates.
           </h1>
           <p className='lm-lede'>
-            Every feature, improvement, and architectural refinement made to WA OTP Gateway.
-            Built with transparency in the open source ecosystem.
+            Every feature, improvement, and architectural refinement made to WA OTP Gateway. Built
+            with transparency in the open source ecosystem.
           </p>
           <div className='lm-actions'>
             <Link href='/signup' className='lm-actions__primary'>
               start free
             </Link>
             {GITHUB_URL ? (
-              <a href={`${GITHUB_URL}/releases`} target='_blank' rel='noreferrer' className='lm-actions__ghost'>
+              <a
+                href={`${GITHUB_URL}/releases`}
+                target='_blank'
+                rel='noreferrer'
+                className='lm-actions__ghost'
+              >
                 github releases
               </a>
             ) : null}
@@ -107,15 +113,21 @@ export default function ChangelogPage() {
               >
                 <div className='flex flex-wrap items-center justify-between gap-3 border-b border-[var(--rule)] pb-4'>
                   <div className='flex items-center gap-3'>
-                    <span className='font-mono font-bold text-lg text-[var(--color-ink)]'>{rel.version}</span>
+                    <span className='font-mono font-bold text-lg text-[var(--color-ink)]'>
+                      {rel.version}
+                    </span>
                     <span className='rounded bg-[var(--rule)] px-2 py-0.5 font-mono text-[11px] font-semibold uppercase text-[var(--color-ink-muted)]'>
                       {rel.badge}
                     </span>
                   </div>
-                  <span className='font-mono text-xs text-[var(--color-ink-muted)]'>{rel.date}</span>
+                  <span className='font-mono text-xs text-[var(--color-ink-muted)]'>
+                    {rel.date}
+                  </span>
                 </div>
 
-                <h3 className='font-semibold text-base sm:text-lg text-[var(--color-ink)]'>{rel.title}</h3>
+                <h3 className='font-semibold text-base sm:text-lg text-[var(--color-ink)]'>
+                  {rel.title}
+                </h3>
 
                 <ul className='space-y-2.5 text-xs sm:text-sm text-[var(--color-ink-muted)]'>
                   {rel.highlights.map((item, idx) => (

@@ -1,0 +1,29 @@
+# Build context for the PocketBase image (backend/pocketbase/Dockerfile).
+#
+# This context is deliberately tiny — the image downloads its own pinned binary,
+# so nothing in here is needed except docker-entrypoint.sh. The exclusions below
+# exist because this directory is also the local install location, and a local
+# install accumulates things that must never reach an image.
+
+# The live database: collections, users, api_keys rows, otp_codes, messages, and
+# the Fernet-encrypted Meta token. If this were in the build context it would be
+# copied into an image layer, where deleting it later would not remove it. That
+# is the operator's own data and it stays on the operator's volume.
+pb_data/
+pb_data*/
+
+# The PocketBase server binary, for the same reason as .gitignore: ~40 MB,
+# platform-specific, and downloaded fresh inside the image with a checksum check.
+pocketbase
+
+# Local backups and exports
+*.zip
+*.tar.gz
+backups/
+
+# Secrets — PocketBase is configured entirely from the environment.
+.env
+.env*
+
+# Editor / OS junk
+.DS_Store

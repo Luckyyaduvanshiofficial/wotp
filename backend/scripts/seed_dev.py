@@ -52,7 +52,7 @@ def main() -> int:
             f"/api/collections/{wa_collection('users')}/records",
             headers=headers,
             json={"email": args.email, "password": args.password,
-                  "passwordConfirm": args.password, "plan": "free", "status": "active"},
+                  "passwordConfirm": args.password, "status": "active"},
         )
         err = r.text.lower()
         if r.status_code == 400 and ("already exists" in err or "must be unique" in err

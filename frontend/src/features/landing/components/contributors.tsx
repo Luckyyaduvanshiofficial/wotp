@@ -14,8 +14,9 @@ export async function ContributorsSection() {
           built in the open with our community.
         </h2>
         <p className='lm-lede'>
-          WA OTP is 100% free and open source. From core FastAPI Python architecture to the responsive Next.js
-          dashboard, we welcome developers worldwide to inspect the code, file bug reports, and submit contributions.
+          WA OTP is 100% free and open source. From core FastAPI Python architecture to the
+          responsive Next.js dashboard, we welcome developers worldwide to inspect the code, file
+          bug reports, and submit contributions.
         </p>
       </div>
 

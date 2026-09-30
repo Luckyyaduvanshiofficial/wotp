@@ -164,8 +164,8 @@ export function deactivateKey(id: string) {
 // ---------------------------------------------------------------------------
 
 export interface Usage {
-  plan: string;
   used: number;
+  /** This installation's monthly WhatsApp send cap. 0 means the operator set none. */
   limit: number;
   reset_utc: string;
 }
@@ -182,14 +182,15 @@ export type OtpChannel = 'whatsapp' | 'telegram';
 
 export interface SendOtpResult {
   ok: boolean;
-  mode: string;
   channel: OtpChannel;
   request_id: string;
-  wa_message_id?: string;
+  /** Provider message id (WhatsApp wamid / Telegram message id). */
+  message_id: string;
   expires_in: number;
-  free_used?: number;
-  free_limit?: number;
-  reset_utc?: string;
+  /** Monthly WhatsApp sends used, and this installation's cap (0 = no cap). */
+  used: number;
+  limit: number;
+  reset_utc: string;
 }
 
 export interface VerifyOtpResult {
@@ -229,6 +230,82 @@ export function verifyOtp(apiKey: string, body: { to: string; code: string }) {
 }
 
 // ---------------------------------------------------------------------------
+// Installation health
+// ---------------------------------------------------------------------------
+
+export interface ProviderStatus {
+  configured: boolean;
+  /** Human-readable state. Never contains a credential value. */
+  detail: string;
+  /** Names of unset variables, e.g. ["META_ACCESS_TOKEN"]. Names only. */
+  missing: string[];
+}
+
+export interface Readiness {
+  ok: boolean;
+  status: string;
+  pocketbase: boolean;
+  whatsapp: ProviderStatus;
+  telegram: { configured: boolean; detail: string };
+  webhook: {
+    verify_token_configured: boolean;
+    signature_check_enabled: boolean;
+  };
+  /** True when delivery is faked — always report this, never hide it. */
+  mock_delivery: boolean;
+}
+
+/**
+ * Three genuinely different states, so the caller cannot conflate them:
+ *
+ * - `ready`       — the installation can deliver an OTP.
+ * - `degraded`    — this API answered but PocketBase did not (503). The data
+ *                   plane is down; nothing can be sent or verified.
+ * - `unreachable` — the API itself did not answer.
+ *
+ * Deliberately does NOT throw: a readiness check that throws would make the
+ * one screen whose job is to report an outage the one screen that crashes
+ * during an outage. Note the 503 body is empty of useful detail, so `data` is
+ * null in the degraded case.
+ */
+export type ReadinessResult =
+  | { state: 'ready' | 'degraded'; data: Readiness | null }
+  | { state: 'unreachable'; message: string };
+
+export async function getReadiness(): Promise<ReadinessResult> {
+  let res: Response;
+  try {
+    res = await request('/health/ready');
+  } catch (e) {
+    return {
+      state: 'unreachable',
+      message: isApiError(e) ? (ERROR_MESSAGES[e.code] ?? e.message) : 'Could not reach the API.'
+    };
+  }
+
+  if (res.status === 503) return { state: 'degraded', data: null };
+  if (!res.ok) return { state: 'unreachable', message: `Readiness check failed (${res.status}).` };
+
+  try {
+    return { state: 'ready', data: (await res.json()) as Readiness };
+  } catch {
+    return { state: 'unreachable', message: 'Readiness check returned a malformed response.' };
+  }
+}
+
+/**
+ * The Meta webhook URL for this installation, derived from the API base the
+ * dashboard itself talks to — so it cannot drift from where the API actually
+ * is. Paste it into the Meta app dashboard.
+ *
+ * On a localhost API base this is correct-looking but unreachable by Meta,
+ * which is why callers must show it as-is rather than hiding that case.
+ */
+export function webhookUrl(): string {
+  return `${API_URL.replace(/\/+$/, '')}/webhooks/whatsapp`;
+}
+
+// ---------------------------------------------------------------------------
 // Error code → readable message (v1 dictionary; see /docs for the full table)
 // ---------------------------------------------------------------------------
 
@@ -240,19 +317,19 @@ export const ERROR_MESSAGES: Record<string, string> = {
   invalid_user_token: 'Your session is invalid. Please sign in again.',
   session_expired: 'Your session expired. Please sign in again.',
   key_not_found: 'That API key was not found (or is not yours).',
-  key_limit_reached: 'You already have 5 active keys. Deactivate one first.',
-  quota_exceeded: 'Monthly free quota used up. Resets on the 1st; paid top-ups coming soon.',
+  key_limit_reached: 'You already have the maximum number of active keys. Deactivate one first.',
+  quota_exceeded: 'This installation has hit its monthly WhatsApp send cap. It resets on the 1st.',
   phone_throttled: 'Too many OTPs to this phone. Try again later.',
   rate_limited: 'Too many requests. Slow down and retry shortly.',
   delivery_failed: 'Delivery failed. You can safely retry.',
-  user_not_linked: 'Telegram delivery needs you to link the @WAOTP bot first.',
-  not_configured: 'This channel is not configured on the server yet.',
+  user_not_linked: 'Telegram delivery needs this phone linked to your Telegram bot first.',
+  not_configured: 'This channel is not configured on this installation yet.',
   key_disabled: 'This API key has been deactivated.',
   wrong_code: 'Wrong code. Check the code and try again.',
   too_many_attempts: 'Too many wrong attempts — request a new code.',
   code_expired: 'That code has expired (or was already used). Request a new one.',
   upstream_unavailable: 'The service is temporarily unavailable. Retry in a moment.',
-  internal_error: 'Something went wrong on our side. Please try again.',
+  internal_error: 'Something went wrong in the gateway. Please try again.',
   request_failed: 'Something went wrong. Please try again.'
 };
 
