@@ -211,6 +211,14 @@ Open the dashboard, sign in, create an API key for your app, and follow
 `/dashboard/onboarding` — a seven-step checklist that mirrors the sections below and shows you, live,
 which parts of your installation are wired up.
 
+> [!IMPORTANT]
+> **Every port binds to `127.0.0.1`, not `0.0.0.0`.** Out of the box this stack is reachable from the
+> machine it runs on and from nowhere else. That is deliberate — PocketBase's admin UI is the control
+> plane for every credential this app holds, and it should not be one `docker compose up` away from the
+> public internet. To serve real users, put a TLS-terminating reverse proxy in front of the dashboard
+> and the API and leave PocketBase on loopback: see [`docs/self-hosting.md`](docs/self-hosting.md).
+> `PB_BIND`, `API_BIND` and `WEB_BIND` override each bind address if you know what you are exposing.
+
 > [!WARNING]
 > **`APP_ENV=production` makes the API refuse to boot** if `SECRET_KEY`, `WAOTP_FERNET_KEY` or
 > `PB_SUPERUSER_PASSWORD` is missing, or if mock delivery is on. That is deliberate: booting with a

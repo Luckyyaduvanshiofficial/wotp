@@ -5,6 +5,13 @@
 #   2. docker compose up -d
 #   3. docker compose exec api python scripts/create_admin.py you@example.com
 #
+# Every published port binds to 127.0.0.1 by default, so this stack is
+# reachable from the machine it runs on and from nothing else until you put a
+# TLS-terminating reverse proxy in front of it (docs/self-hosting.md). That is
+# deliberate: PocketBase's admin UI is the control plane for every credential
+# this app holds, and it must not be one `docker compose up` away from the
+# public internet. PB_BIND / API_BIND / WEB_BIND override each one.
+#
 # There is no image of this app published anywhere, and no hosted service it
 # talks to. Everything below is built from this checkout and runs on your own
 # machine or server. See docs/self-hosting.md.
@@ -24,7 +31,18 @@ services:
       - path: ./.env
         required: false
     ports:
-      - '8090:8090'
+      # Bound to loopback ON PURPOSE. PocketBase is the control plane for every
+      # credential this app holds — the admin UI at /_/ can read and rewrite the
+      # encrypted Meta token, every API key hash and every audit row. Publishing
+      # 8090 on 0.0.0.0 puts that on the public internet on any host with a
+      # public IP, which is the single worst default this file could ship.
+      #
+      # Reach it through an SSH tunnel or the reverse proxy on this host:
+      #   ssh -L 8090:127.0.0.1:8090 you@your-server   # then open localhost:8090/_/
+      #
+      # To expose it on your LAN anyway, set PB_BIND=0.0.0.0 — and put TLS and
+      # authentication in front of it first. See docs/self-hosting.md.
+      - '${PB_BIND:-127.0.0.1}:8090:8090'
     volumes:
       # Named volume, so the data survives `docker compose down` and rebuilds.
       #
@@ -64,8 +82,13 @@ services:
       # dashboard is actually served from, or every dashboard request fails
       # CORS — which presents as a dead backend rather than a config error.
       DASHBOARD_ORIGIN: ${DASHBOARD_ORIGIN:-http://localhost:3000}
+    # Loopback by default, like PocketBase above. The API authenticates callers
+    # and holds the provider tokens, so it is not something to publish before a
+    # TLS-terminating proxy is in front of it. Your proxy (or an SSH tunnel for
+    # local testing) reaches it on 127.0.0.1:8000.
+    # Set API_BIND=0.0.0.0 to publish it directly — only behind TLS.
     ports:
-      - '8000:8000'
+      - '${API_BIND:-127.0.0.1}:8000:8000'
     depends_on:
       pocketbase:
         condition: service_healthy
@@ -99,8 +122,12 @@ services:
         # Leave empty to render no GitHub chrome on the landing page.
         NEXT_PUBLIC_GITHUB_REPO: ${NEXT_PUBLIC_GITHUB_REPO:-}
     restart: unless-stopped
+    # Loopback by default: the dashboard is what your operators sign in to, and
+    # a plain-HTTP login on a public port leaks the session token to anyone on
+    # the path. Put TLS in front (docs/self-hosting.md), or set WEB_BIND=0.0.0.0
+    # for a trusted LAN.
     ports:
-      - '3000:3000'
+      - '${WEB_BIND:-127.0.0.1}:3000:3000'
     depends_on:
       # Not a correctness requirement — the dashboard is client-rendered and
       # only needs its two backends once a browser loads it — but it avoids a
