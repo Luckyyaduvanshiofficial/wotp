@@ -994,6 +994,63 @@ def test_provider_rejection_is_still_retryable_and_uncached(client, monkeypatch)
     assert len(attempts) == 2  # the retry really was retried
 
 
+# ---- F11: the lock pools must not grow without bound ----
+
+
+def test_lock_pool_is_bounded():
+    import asyncio
+
+    from app.dependencies import LockPool
+
+    pool = LockPool(max_size=8)
+    for i in range(500):
+        pool.get(f"key-{i}")
+    assert len(pool) <= 8
+
+    # a key already in the pool returns the same lock (identity matters)
+    assert pool.get("key-499") is pool.get("key-499")
+
+
+def test_lock_pool_never_evicts_a_held_lock():
+    """Evicting a held lock would hand two callers separate locks for the same
+    key — a silent loss of mutual exclusion, which is worse than memory use."""
+    import asyncio
+
+    from app.dependencies import LockPool
+
+    pool = LockPool(max_size=1)
+    held = pool.get("held")
+
+    async def scenario():
+        async with held:
+            # inserting past the bound must not drop the held lock
+            for i in range(50):
+                pool.get(f"other-{i}")
+            assert pool.get("held") is held
+
+    asyncio.run(scenario())
+
+
+def test_lock_pool_clear():
+    from app.dependencies import LockPool
+
+    pool = LockPool(max_size=8)
+    pool.get("a")
+    assert len(pool) == 1
+    pool.clear()
+    assert len(pool) == 0
+
+
+def test_verify_locks_are_bounded_under_many_phones(client):
+    """A valid key naming many distinct phone numbers must not grow the pool
+    without limit."""
+    from app import dependencies
+
+    for i in range(dependencies._verify_locks._max + 200):
+        dependencies.verify_lock("usr1", f"9198765{i:05d}")
+    assert len(dependencies._verify_locks) <= dependencies._verify_locks._max
+
+
 def test_old_otp_invalidated_on_resend(client):
     """Sending a new OTP invalidates the previous active OTP for that phone."""
     c, fake = client

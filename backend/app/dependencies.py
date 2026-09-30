@@ -10,7 +10,7 @@ be turned into a flood of PocketBase queries. Both limiters are process-local
 import asyncio
 import ipaddress
 import time
-from collections import deque
+from collections import OrderedDict, deque
 
 import httpx
 from fastapi import Request, Security
@@ -41,10 +41,57 @@ _UNKNOWN_KEY_TTL = 30.0
 _UNKNOWN_KEY_MAX = 4096
 _unknown_key_cache: dict[str, float] = {}
 
-# Single-worker process: plain dicts of asyncio.Lock are fine (unbounded by
-# design — one entry per owner id / (owner, phone) pair, cleared on restart).
-_owner_locks: dict[str, asyncio.Lock] = {}
-_verify_locks: dict[tuple[str, str], asyncio.Lock] = {}
+
+class LockPool:
+    """A bounded pool of asyncio.Lock, keyed by anything hashable.
+
+    The keys here are owner ids and (owner, phone) pairs — both influenced by
+    requests — so an unbounded dict of locks is a slow memory leak any caller
+    with a valid key can drive: every distinct phone number they name allocates
+    an entry that is never freed.
+
+    Eviction is conservative. It only ever removes a lock that is **not
+    currently held**, and never the key being requested, because dropping a lock
+    that someone is waiting on would hand two coroutines their own lock for the
+    same key and silently break the mutual exclusion this exists to provide.
+    If every candidate is held, the pool grows past its bound rather than
+    breaking correctness — memory is recoverable, a lost quota guard is not.
+    """
+
+    def __init__(self, max_size: int = 4096) -> None:
+        self._max = max_size
+        self._locks: OrderedDict = OrderedDict()
+
+    def get(self, key) -> asyncio.Lock:
+        lock = self._locks.get(key)
+        if lock is None:
+            lock = asyncio.Lock()
+            self._locks[key] = lock
+            self._evict(exempt=key)
+        else:
+            self._locks.move_to_end(key)
+        return lock
+
+    def _evict(self, exempt) -> None:
+        if len(self._locks) <= self._max:
+            return
+        for candidate in list(self._locks.keys()):
+            if candidate == exempt:
+                continue
+            if not self._locks[candidate].locked():
+                del self._locks[candidate]
+                return
+
+    def clear(self) -> None:
+        self._locks.clear()
+
+    def __len__(self) -> int:
+        return len(self._locks)
+
+
+# One entry per owner (sends) / (owner, phone) pair (verifies).
+_owner_locks = LockPool()
+_verify_locks = LockPool()
 
 
 def owner_lock(owner_id: str) -> asyncio.Lock:
@@ -57,13 +104,13 @@ def owner_lock(owner_id: str) -> asyncio.Lock:
     quota check before either wrote its ledger row — the exact double-spend
     this lock exists to prevent.
     """
-    return _owner_locks.setdefault(owner_id, asyncio.Lock())
+    return _owner_locks.get(owner_id)
 
 
 def verify_lock(owner_id: str, phone: str) -> asyncio.Lock:
     """Serializes /v1/otp/verify per (owner, phone): two concurrent verifies of
     the same code must not both consume the single-use row (double spend)."""
-    return _verify_locks.setdefault((owner_id, phone), asyncio.Lock())
+    return _verify_locks.get((owner_id, phone))
 
 
 def invalidate_api_key(key_hash: str) -> None:
