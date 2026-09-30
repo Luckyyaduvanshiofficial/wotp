@@ -20,6 +20,24 @@ def wa_collection(name: str) -> str:
     return f"{get_settings().pb_collections_prefix}{name}"
 
 
+def pb_literal(value: str) -> str:
+    """Quote a value as a PocketBase filter string literal, or refuse to.
+
+    Filters are built by string interpolation, so any value that reaches one
+    has to be safe to embed. A single quote would terminate the literal, and a
+    backslash could escape the terminator depending on how the parser treats
+    it — so both are rejected outright rather than escaped, on the principle
+    that a value which needs escaping should not be in a filter at all.
+
+    Values written here are record ids, phone numbers, sha256 hex digests and
+    validated provider message ids: none of them legitimately contain either
+    character, so a rejection means something upstream is wrong.
+    """
+    if "'" in value or "\\" in value:
+        raise ValueError("value is not safe to embed in a PocketBase filter")
+    return f"'{value}'"
+
+
 class PBClient:
     def __init__(
         self,

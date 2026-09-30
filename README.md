@@ -276,8 +276,10 @@ Once, per installation. The full walkthrough with the exact clicks is in
 
    Subscribe to the `messages` field. Meta calls `GET` on that URL once to verify it, echoing back the
    verify token you set in step 5.
-7. Set `META_APP_SECRET` so inbound webhook calls are signature-checked. When it is unset, signature
-   validation is skipped — and `/health/ready` reports that rather than hiding it.
+7. Set `META_APP_SECRET` so inbound webhook calls are signature-checked. This is **required in
+   production** whenever WhatsApp credentials are set: the app refuses to boot without it. Left empty
+   in development, signature validation is skipped — and `/health/ready` reports that rather than
+   hiding it.
 
 Until your number and template are approved, use Meta's **test number**: it delivers only to
 allow-listed recipients, which is a useful sandbox rather than a limitation.

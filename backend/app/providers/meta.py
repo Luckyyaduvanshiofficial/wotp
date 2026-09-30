@@ -9,6 +9,7 @@ Meta requires both for an authentication template to render its button.
 import hashlib
 import hmac
 import logging
+import re
 
 from ..core.config import get_settings
 from .base import ProviderError, ProviderStatus, WebhookEvent
@@ -17,11 +18,25 @@ logger = logging.getLogger("waotp")
 
 _TIMEOUT = 15.0
 
+# Provider message ids are echoed back to us in status callbacks and then used
+# as a lookup key against PocketBase. They arrive from outside the trust
+# boundary, so they are whitelisted here rather than trusted: the allowed set
+# covers WhatsApp's `wamid.<base64-ish>` ids and Telegram's numeric ids, and
+# deliberately excludes quotes, backslashes, whitespace, `&`, `|` and
+# parentheses — everything that could terminate a filter literal or change the
+# shape of a filter expression.
+_MESSAGE_ID_RE = re.compile(r"^[A-Za-z0-9._:+/=-]{1,128}$")
+
+
+def is_safe_message_id(value: str) -> bool:
+    return bool(_MESSAGE_ID_RE.match(value))
+
+
 # A Meta-provided sandbox template takes three body parameters instead of the
 # one-parameter shape of a normal authentication template. It is only useful
 # while testing against Meta's own test number, but it is genuinely what the
-# sandbox expects, so the shape is preserved.
-_SANDBOX_TEMPLATE = "jaspers_market_order_confirmation_v1"
+# sandbox expects, so the shape is preserved — as configuration, though, not as
+# a name baked into the source (see META_SANDBOX_TEMPLATE).
 
 
 class MetaProvider:
@@ -38,12 +53,17 @@ class MetaProvider:
         app_secret: str = "",
         graph_base_url: str = "",
         graph_version: str = "",
+        sandbox_template: str = "",
     ) -> None:
         self.phone_number_id = phone_number_id
         self.token = token
         self.template = template
         self.template_lang = template_lang
         self.app_secret = app_secret
+        # Empty means "no sandbox template": every template uses the normal
+        # two-parameter authentication shape unless the operator names the
+        # sandbox template they are actually sending with.
+        self.sandbox_template = sandbox_template
         env = get_settings()
         self.graph_base_url = (graph_base_url or env.meta_graph_base_url).rstrip("/")
         self.graph_version = graph_version or env.meta_graph_version
@@ -58,7 +78,7 @@ class MetaProvider:
         )
 
     def _components(self, code: str) -> list[dict]:
-        if self.template == _SANDBOX_TEMPLATE:
+        if self.sandbox_template and self.template == self.sandbox_template:
             return [
                 {
                     "type": "body",
@@ -158,6 +178,11 @@ class MetaProvider:
         Malformed input yields no events rather than an exception: a webhook
         receiver must not 500 on a payload it does not recognise, or Meta
         retries it forever.
+
+        Provider message ids are validated here, at the boundary where they
+        enter the process, because downstream they become filter values in
+        control-plane queries. An id that fails validation is dropped with a
+        warning rather than passed along.
         """
         events: list[WebhookEvent] = []
         if not isinstance(payload, dict):
@@ -176,6 +201,14 @@ class MetaProvider:
                 for status in value.get("statuses") or []:
                     if not isinstance(status, dict):
                         continue
+                    message_id = str(status.get("id") or "")
+                    if not is_safe_message_id(message_id):
+                        logger.warning(
+                            "whatsapp webhook: dropping status event with a "
+                            "malformed provider message id (len=%d)",
+                            len(message_id),
+                        )
+                        continue
                     errors = status.get("errors") or []
                     first_error = ""
                     if errors and isinstance(errors[0], dict):
@@ -185,7 +218,7 @@ class MetaProvider:
                     events.append(
                         WebhookEvent(
                             kind="status",
-                            provider_message_id=str(status.get("id") or ""),
+                            provider_message_id=message_id,
                             status=str(status.get("status") or ""),
                             recipient=str(status.get("recipient_id") or ""),
                             error=first_error[:500],
@@ -196,10 +229,13 @@ class MetaProvider:
                 for message in value.get("messages") or []:
                     if not isinstance(message, dict):
                         continue
+                    message_id = str(message.get("id") or "")
+                    if not is_safe_message_id(message_id):
+                        continue
                     events.append(
                         WebhookEvent(
                             kind="message",
-                            provider_message_id=str(message.get("id") or ""),
+                            provider_message_id=message_id,
                             recipient=str(message.get("from") or ""),
                             raw=message,
                         )

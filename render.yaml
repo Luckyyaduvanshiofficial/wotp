@@ -133,9 +133,10 @@ services:
       # dashboard when you register the webhook.
       - key: META_VERIFY_TOKEN
         sync: false
-      # Validates X-Hub-Signature-256 on inbound webhook calls. When unset,
-      # signature validation is skipped — /health/ready reports that state
-      # rather than hiding it.
+      # Validates X-Hub-Signature-256 on inbound webhook calls. REQUIRED here:
+      # APP_ENV is production above and WhatsApp credentials are configured, so
+      # the app refuses to boot without it. Leaving it unset would mean anyone
+      # who learns the webhook URL can forge delivery statuses.
       - key: META_APP_SECRET
         sync: false
 

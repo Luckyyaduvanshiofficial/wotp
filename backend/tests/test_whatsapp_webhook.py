@@ -262,6 +262,123 @@ def test_post_unknown_message_id_is_ignored(client, monkeypatch):
     assert r.json()["applied"] == 0
 
 
+# ---- provider message ids are untrusted input ----
+
+
+@pytest.mark.parametrize(
+    "hostile_id",
+    [
+        "' || true || wa_message_id!='",  # filter-injection attempt
+        "wamid.abc'",                      # unterminated literal
+        "wamid.abc\\'",                    # escaped-quote attempt
+        "wamid.abc && created>'2000-01-01 00:00:00'",
+        "wamid.abc' || wa_message_id='mock-abc123",
+        "",
+        "x" * 129,                          # over the length cap
+    ],
+)
+def test_post_drops_malformed_provider_message_id(client, monkeypatch, hostile_id):
+    """A forged status.id must never reach the control-plane filter.
+
+    With META_APP_SECRET unset (the local-dev default) an attacker can POST an
+    unsigned callback, so the id is attacker-controlled input at that point.
+    """
+    c, fake = client
+    add_developer(fake)
+    _settings(monkeypatch, META_VERIFY_TOKEN=VERIFY_TOKEN, META_APP_SECRET="")
+    fake.records["messages"]["m1"] = {
+        "id": "m1", "owner": "usr1", "wa_message_id": "mock-abc123",
+        "channel": "whatsapp", "status": "sent", "error": "",
+    }
+
+    r = _post(c, _status_payload(message_id=hostile_id, status="failed"), secret=None)
+    assert r.status_code == 200
+    assert r.json()["applied"] == 0
+    # the real row was not touched by the injected filter
+    assert fake.records["messages"]["m1"]["status"] == "sent"
+    assert fake.records["messages"]["m1"]["error"] == ""
+
+
+def test_post_still_accepts_realistic_wamid_shapes(client, monkeypatch):
+    """The whitelist must not reject ids Meta actually sends."""
+    c, fake = client
+    add_developer(fake)
+    _settings(monkeypatch, META_VERIFY_TOKEN=VERIFY_TOKEN, META_APP_SECRET=APP_SECRET)
+
+    for i, real_id in enumerate(
+        [
+            "wamid.HBgMOTE5ODc2NTQzMjEwFQIAEhgg",
+            "wamid.HBgMOTE5ODc2NTQzMjEwFQIAEhggABIAGBQyNkI0OEY=",
+            "1234",  # telegram-shaped numeric id
+        ]
+    ):
+        row_id = f"m{i}"
+        fake.records["messages"][row_id] = {
+            "id": row_id, "owner": "usr1", "wa_message_id": real_id,
+            "channel": "whatsapp", "status": "sent", "error": "",
+        }
+        r = _post(c, _status_payload(message_id=real_id, status="delivered"))
+        assert r.status_code == 200
+        assert r.json()["applied"] == 1
+        assert fake.records["messages"][row_id]["status"] == "delivered"
+
+
+def test_pb_literal_rejects_filter_metacharacters():
+    from app.services.pocketbase import pb_literal
+
+    assert pb_literal("mock-abc123") == "'mock-abc123'"
+    assert pb_literal("wamid.HBgM+/=") == "'wamid.HBgM+/='"
+    with pytest.raises(ValueError):
+        pb_literal("abc'def")
+    with pytest.raises(ValueError):
+        pb_literal("abc\\def")
+
+
+def test_a_rejected_filter_value_never_becomes_a_5xx(client, monkeypatch):
+    """Whatever goes wrong applying a status, Meta must see 200 — a 5xx here
+    means Meta retries the same doomed callback forever."""
+    c, fake = client
+    add_developer(fake)
+    _settings(monkeypatch, META_VERIFY_TOKEN=VERIFY_TOKEN, META_APP_SECRET=APP_SECRET)
+
+    def boom(_value):
+        raise ValueError("not safe to embed")
+
+    monkeypatch.setattr("app.routers.whatsapp_webhook.pb_literal", boom)
+
+    r = _post(c, _status_payload(status="delivered"))
+    assert r.status_code == 200
+    assert r.json() == {"ok": True, "events": 1, "applied": 0}
+
+
+def test_production_requires_app_secret_when_whatsapp_is_configured():
+    """Production must not boot with WhatsApp configured and unsigned callbacks."""
+    from app.core.config import Settings
+
+    base = dict(
+        app_env="production",
+        waotp_fernet_key="k" * 44,
+        secret_key="s" * 32,
+        pb_superuser_password="a-strong-password",
+        waotp_mock_delivery=False,
+    )
+
+    # no WhatsApp credentials: nothing to verify, boots fine
+    Settings(**base)
+
+    # WhatsApp via env without an app secret: refused
+    with pytest.raises(ValueError) as exc:
+        Settings(**base, meta_phone_number_id="1314353638428219")
+    assert "META_APP_SECRET" in str(exc.value)
+
+    # same, but the secret is present: boots
+    Settings(
+        **base,
+        meta_phone_number_id="1314353638428219",
+        meta_app_secret="app-secret",
+    )
+
+
 def test_post_unmodelled_status_is_skipped(client, monkeypatch):
     """Meta sends statuses we do not model (e.g. "deleted"); writing one would
     violate the select field, so it must be skipped, not attempted."""

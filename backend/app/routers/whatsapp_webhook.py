@@ -26,7 +26,7 @@ from fastapi.responses import JSONResponse, PlainTextResponse
 
 from ..core.config import get_settings
 from ..providers import build_whatsapp_provider
-from ..services.pocketbase import PocketBaseError, wa_collection
+from ..services.pocketbase import PocketBaseError, pb_literal, wa_collection
 
 router = APIRouter(tags=["whatsapp"])
 logger = logging.getLogger("waotp")
@@ -108,9 +108,12 @@ async def receive(
             continue
         try:
             applied += await _apply_status(request, event)
-        except PocketBaseError:
+        except Exception:
             # A control-plane failure must not become Meta's problem: it would
             # retry the same callback, and the retry would fail the same way.
+            # Broad on purpose — a rejected filter value (ValueError) is the
+            # same class of "this event is not actionable" as a storage error,
+            # and neither may turn into a 5xx that Meta retries forever.
             # Logged loudly for the operator instead.
             logger.exception(
                 "whatsapp webhook: could not record status=%s for message=%s",
@@ -124,9 +127,14 @@ async def receive(
 async def _apply_status(request: Request, event) -> int:
     """Update the `messages` row for this provider message id. Returns rows touched."""
     pb = request.app.state.pb
+    # Second line of defence: the provider id was already whitelisted in
+    # MetaProvider.process_webhook, and pb_literal refuses to build a filter
+    # out of anything that could terminate the literal or escape it. Both
+    # exist because this is the one filter in the codebase whose value comes
+    # from an unauthenticated third party.
     found = await pb.list(
         wa_collection("messages"),
-        filter=f"wa_message_id='{event.provider_message_id}'",
+        filter=f"wa_message_id={pb_literal(event.provider_message_id)}",
         per_page=1,
     )
     items = found.get("items") or []

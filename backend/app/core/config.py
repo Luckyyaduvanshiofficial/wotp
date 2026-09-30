@@ -177,6 +177,22 @@ class Settings(BaseSettings):
             missing.append("PB_SUPERUSER_PASSWORD")
         if self.waotp_mock_delivery:
             missing.append("WAOTP_MOCK_DELIVERY must be 0 (mock delivery fakes sends)")
+
+        # WhatsApp configured but unsigned callbacks accepted: anyone who
+        # learns the webhook URL could post forged delivery statuses, and those
+        # payloads feed a control-plane query. The webhook only tolerates a
+        # missing secret so that a local install can run without a full Meta
+        # app; that trade-off must not survive into production.
+        # Checked against the env credentials, which is where this app reads
+        # WhatsApp credentials from first. Credentials supplied only through
+        # the PocketBase settings row cannot be inspected at boot — that case
+        # is reported by GET /health/ready instead.
+        whatsapp_from_env = bool(self.meta_phone_number_id or self.meta_access_token)
+        if whatsapp_from_env and not self.meta_app_secret:
+            missing.append(
+                "META_APP_SECRET (WhatsApp credentials are set, so inbound "
+                "webhook signatures must be verifiable)"
+            )
         if missing:
             raise ValueError(
                 "Refusing to start with APP_ENV=production and an incomplete "
