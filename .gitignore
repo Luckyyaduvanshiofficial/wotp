@@ -36,6 +36,7 @@ graphify-out/
 # public repo. Re-installable per machine, so there is nothing to lose.
 .claude/
 .agents/
+.commandcode/
 .hallmark/
 .zcode/
 .v2c/
