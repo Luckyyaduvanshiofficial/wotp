@@ -54,3 +54,41 @@ def test_fernet_roundtrip():
 def test_settings_env_loaded():
     assert get_settings().waotp_mock_delivery is True
     assert Fernet(get_settings().waotp_fernet_key.encode())
+
+
+# ---- sandbox template shape is configuration, not a baked-in name ----
+
+
+def test_authentication_template_uses_the_two_parameter_shape():
+    from app.providers.meta import MetaProvider
+
+    provider = MetaProvider(template="verification_code")
+    components = provider._components("123456")
+    assert components[0]["parameters"] == [{"type": "text", "text": "123456"}]
+    assert components[1]["sub_type"] == "url"
+    assert components[1]["parameters"] == [{"type": "text", "text": "123456"}]
+
+
+def test_sandbox_template_name_is_not_special_by_default():
+    """No template name gets the sandbox shape unless the operator names it."""
+    from app.providers.meta import MetaProvider
+
+    provider = MetaProvider(template="jaspers_market_order_confirmation_v1")
+    assert len(provider._components("123456")) == 2
+
+
+def test_sandbox_shape_is_opt_in_by_template_name():
+    from app.providers.meta import MetaProvider
+
+    provider = MetaProvider(
+        template="jaspers_market_order_confirmation_v1",
+        sandbox_template="jaspers_market_order_confirmation_v1",
+    )
+    components = provider._components("123456")
+    assert len(components) == 1
+    assert len(components[0]["parameters"]) == 3
+
+    # only the named template gets that shape
+    other = MetaProvider(template="verification_code",
+                         sandbox_template="jaspers_market_order_confirmation_v1")
+    assert len(other._components("123456")) == 2

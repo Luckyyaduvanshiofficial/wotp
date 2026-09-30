@@ -93,6 +93,16 @@ class Settings(BaseSettings):
     )
     meta_template: str = "verification_code"
     meta_template_lang: str = "en_US"
+    # Optional. Meta's sandbox/test number ships with a sample template that
+    # takes three body parameters instead of the single parameter a normal
+    # authentication template takes. Naming it here selects that shape for that
+    # one template; every other template uses the standard authentication
+    # shape. Empty means "no sandbox template", which is right for any real
+    # install — this is a test-number convenience, not a default.
+    meta_sandbox_template: str = Field(
+        default="",
+        validation_alias=AliasChoices("meta_sandbox_template", "waotp_meta_sandbox_template"),
+    )
     # Echoed back during Meta's webhook verification handshake. You choose this
     # string and paste the same value into the Meta app dashboard.
     meta_verify_token: str = ""

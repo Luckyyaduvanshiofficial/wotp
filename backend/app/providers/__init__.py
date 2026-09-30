@@ -44,4 +44,7 @@ def build_whatsapp_provider(cfg: dict | None = None) -> MetaProvider:
         template=cfg.get("meta_template") or "verification_code",
         template_lang=cfg.get("meta_template_lang") or "en_US",
         app_secret=get_settings().meta_app_secret,
+        sandbox_template=(
+            cfg.get("meta_sandbox_template") or get_settings().meta_sandbox_template
+        ),
     )
