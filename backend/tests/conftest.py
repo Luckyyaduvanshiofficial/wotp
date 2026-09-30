@@ -58,6 +58,11 @@ def _match(record: dict, filter_str: str | None) -> bool:
         if not m:
             raise ValueError(f"FakePB cannot parse filter clause: {clause!r}")
         field, op, raw = m.groups()
+        # The capture group is greedy, so an unquoted value followed by " &&"
+        # keeps the trailing space ("true " rather than "true"). PocketBase's
+        # parser does not care about that whitespace; this double must not
+        # either, or a filter is judged by its formatting.
+        raw = raw.strip()
         if raw.startswith("'"):
             value = raw[1:-1]
         elif raw == "true":
