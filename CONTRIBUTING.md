@@ -82,8 +82,8 @@ Set `DASHBOARD_ORIGIN` on the backend to the dashboard origin (`http://localhost
 
 These come from [`CLAUDE.md`](CLAUDE.md)'s gotchas. They are not style preferences; each one is a bug we already paid for.
 
-- **Keep `scripts/provision_pb.py` idempotent.** Existing collections are never modified. Do not "fix" this by making it reconcile drift — people run it against live instances.
-- **Every route must declare its errors** in the OpenAPI spec via `error_responses()` in `app/core/errors.py`, and stay in sync with `docs/api.md` §7. A new error code without both is an incomplete change.
+- **Keep `backend/scripts/provision_pb.py` idempotent.** Existing collections are never modified. Do not "fix" this by making it reconcile drift — people run it against live instances.
+- **Every route must declare its errors** in the OpenAPI spec via `error_responses()` in `backend/app/core/errors.py`, and stay in sync with `backend/docs/api.md` §7. A new error code without both is an incomplete change.
 - **Validation errors must never echo raw input.** Return the whitelisted `detail: [{loc, msg, type}]` shape.
 - **PocketBase stays on v0.40.x** unless you also update the migration.
 - **Do not add a second uvicorn worker** without rethinking concurrency. The per-owner `asyncio` lock around sends and the per-(owner, phone) lock around verifies are the only thing preventing concurrent quota double-spend and duplicate verification. They are process-local by design.
@@ -120,7 +120,7 @@ Keep it lightweight — this is a small project and a heavy process would only s
 - **One concern per PR.** A bugfix mixed with a refactor is two PRs that got merged by accident.
 - **Write commit messages that explain why**, not just what. The diff already shows what changed.
 - **Describe how you tested it.** "Ran `pytest -q`" or "sent a real WhatsApp OTP to my own number" tells a reviewer far more than "should work".
-- **Note any new error code** and confirm you updated both the OpenAPI declaration and `docs/api.md` §7.
+- **Note any new error code** and confirm you updated both the OpenAPI declaration and `backend/docs/api.md` §7.
 
 ## Licensing of contributions
 

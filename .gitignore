@@ -40,3 +40,12 @@ graphify-out/
 .hallmark/
 .zcode/
 .v2c/
+
+# Loose font bundles downloaded into the repository root. The app's fonts come
+# from next/font/google via frontend/src/components/themes/font.config.ts, so a
+# dropped-in font here is unreferenced and would add megabytes to the history
+# for nothing. To actually use one, put it under frontend/public/fonts/ and
+# reference it from font.config.ts — then track it deliberately.
+/GeistPixel-*.ttf
+/OFL.txt
+/README.txt
