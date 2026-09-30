@@ -374,11 +374,18 @@ header is used — the one your proxy appended — and it must parse as an IP ad
 back to the socket peer. Reading the left-most entry instead would let a client forge a prefix and mint
 itself a fresh rate-limit bucket per request.
 
-### Keeping secrets out of logs
+### Keeping secrets and personal data out of logs
 
 Tokens, API keys, OTP codes, `Authorization` headers and webhook signatures are never logged, at any log
-level, in any environment. Error responses never echo raw input back. This is a property of the code, not
-a configuration option — see [`SECURITY.md`](SECURITY.md) for the specifics.
+level, in any environment. Phone numbers — the only end-user personal data this service handles — are
+written masked (length plus the last two digits), which is enough to correlate two lines during an
+incident and not enough to identify anyone. Error responses never echo raw input back. This is a property
+of the code, not a configuration option — see [`SECURITY.md`](SECURITY.md) for the specifics.
+
+Every response carries an **`X-Request-Id`** header, and the failure paths that need manual
+reconciliation log the same value. Send one in and it is reused if it is a plain short token; anything
+else is replaced with a generated id, because an id you choose is also an id that goes into log lines and
+response headers. Quote it when reporting a problem.
 
 ## API reference
 

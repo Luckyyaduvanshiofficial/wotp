@@ -7,6 +7,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from .core.config import get_settings
 from .core.errors import register_error_handlers
+from .core.tracing import RequestIdMiddleware
 from .routers import health, keys, otp, telegram_webhook, whatsapp_webhook
 from .services.pocketbase import PBClient
 
@@ -61,6 +62,9 @@ def create_app() -> FastAPI:
             allow_methods=["GET", "POST", "DELETE"],  # DELETE: /v1/keys/{id} retirement
             allow_headers=["Authorization", "X-Api-Key", "Content-Type"],
         )
+    # Outermost of the app's own middleware: every response carries X-Request-Id,
+    # including ones produced by error handlers.
+    app.add_middleware(RequestIdMiddleware)
     register_error_handlers(app)
 
     @app.get("/", tags=["meta"])

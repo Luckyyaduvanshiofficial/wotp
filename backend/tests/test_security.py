@@ -1,3 +1,4 @@
+import pytest
 from cryptography.fernet import Fernet
 
 from app.core.config import get_settings
@@ -146,7 +147,60 @@ def test_failed_send_logs_do_not_contain_the_phone_number(client, monkeypatch, c
     assert "***10" in text, text
 
 
-# ---- sandbox template shape is configuration, not a baked-in name ----
+# ---- request correlation ----
+
+
+def test_every_response_carries_a_request_id(client):
+    c, _fake = client
+
+    r = c.get("/health")
+    assert r.headers["X-Request-Id"]
+
+    # a rejected request too — that is exactly when a caller needs one to quote
+    bad = c.post(
+        "/v1/otp/send",
+        json={"to": "919876543210"},
+        headers={"X-Api-Key": "waotp_nope0000000000000000000000000000000000"},
+    )
+    assert bad.status_code == 401
+    assert bad.headers["X-Request-Id"]
+
+
+def test_a_sane_caller_supplied_request_id_is_reused(client):
+    c, _fake = client
+    r = c.get("/health", headers={"X-Request-Id": "trace-abc.123:4"})
+    assert r.headers["X-Request-Id"] == "trace-abc.123:4"
+
+
+@pytest.mark.parametrize(
+    "hostile",
+    [
+        "id\ninjected-log-line",   # log injection
+        "id with spaces",
+        'id"quoted"',
+        "x" * 200,                  # unbounded
+        "id;<script>",
+    ],
+)
+def test_a_hostile_request_id_is_replaced_not_echoed(client, hostile):
+    """The id is echoed into a response header and written to logs, so a
+    caller-supplied value must not be able to forge entries or break headers."""
+    from app.core.tracing import _SAFE_REQUEST_ID
+
+    c, _fake = client
+    r = c.get("/health", headers={"X-Request-Id": hostile})
+    returned = r.headers["X-Request-Id"]
+    assert returned != hostile
+    assert _SAFE_REQUEST_ID.match(returned)
+
+
+def test_sanitize_request_id_generates_when_absent():
+    from app.core.tracing import sanitize_request_id
+
+    generated = sanitize_request_id(None)
+    assert generated
+    assert sanitize_request_id("") != ""
+    assert sanitize_request_id(generated) == generated
 
 
 def test_authentication_template_uses_the_two_parameter_shape():

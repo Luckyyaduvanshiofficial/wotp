@@ -26,6 +26,7 @@ from ..core.security import (
     mask_phone,
     normalize_phone,
 )
+from ..core.tracing import get_request_id
 from ..dependencies import idempotency_store, owner_lock, require_api_key, verify_lock
 from ..providers import ProviderError, build_whatsapp_provider
 from ..services import telegram as telegram_service
@@ -272,11 +273,12 @@ async def send_otp(
         except Exception as exc:
             logger.critical(
                 "ledger write failed after delivery — reconcile wa_message_id=%s "
-                "channel=%s owner=%s phone=%s",
+                "channel=%s owner=%s phone=%s request_id=%s",
                 provider_message_id,
                 body.channel,
                 owner["id"],
                 mask_phone(phone),
+                get_request_id() or "(none)",
                 exc_info=exc,
             )
             failure = DeliveryFailed(
@@ -394,7 +396,8 @@ async def _log_failure(pb, owner, api_key, phone, channel, error):
     except Exception:
         logger.critical(
             "audit row for failed send could not be written — channel=%s "
-            "owner=%s phone=%s error=%s",
-            channel, owner["id"], mask_phone(phone), (error or "")[:300],
+            "owner=%s phone=%s request_id=%s error=%s",
+            channel, owner["id"], mask_phone(phone), get_request_id() or "(none)",
+            (error or "")[:300],
             exc_info=True,
         )
