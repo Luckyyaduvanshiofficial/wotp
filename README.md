@@ -342,11 +342,14 @@ there is no redeploy, and `backend/.env` only supplies fallbacks for values the 
 | Requests per minute per client IP | 30 |
 | Active API keys per operator | 5 |
 
-Four semantics that trip people up, so they are worth reading twice:
+Five semantics that trip people up, so they are worth reading twice:
 
-- The monthly cap counts **WhatsApp-delivered sends only**. Telegram is never metered against it.
-- **Failed sends never consume the cap.** They are still logged with `status=failed`, so you keep the
-  audit trail.
+- The monthly cap counts **WhatsApp sends the provider accepted**. Telegram is never metered
+  against it.
+- **A send the provider rejected never consumes the cap.** It is still logged with `status=failed`.
+- Once the provider accepts a message it stays counted, even if a later status callback reports it
+  failed. Usage has to be append-only to work as a spend guard — a counter that drops when messages
+  succeed is not a spending limit.
 - Both the per-phone throttle and the per-key rate limit apply to **both** channels. The per-phone
   throttle exists to stop someone burning your quota on one victim's number, and that risk is identical
   on Telegram.

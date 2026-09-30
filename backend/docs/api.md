@@ -198,7 +198,7 @@ curl -X POST "$WAOTP_API/v1/otp/send" \
 | `request_id` | ledger id of this send. **keep it** — quote it in support requests; it is the fastest way to locate your message in the audit log |
 | `message_id` | provider-side message id (`wamid.…` for whatsapp, a numeric id for telegram, `mock-…` in mock mode). used for delivery reconciliation |
 | `expires_in` | seconds until the code expires — `300` (5 minutes) by default. build your ui timer from this instead of hardcoding |
-| `used` | whatsapp sends delivered this utc month. after a whatsapp send it already includes that send; after a telegram send it reports the current whatsapp count (telegram never increments it) |
+| `used` | whatsapp sends the provider accepted this utc month. after a whatsapp send it already includes that send; after a telegram send it reports the current whatsapp count (telegram never increments it) |
 | `limit` | the installation's monthly whatsapp cap. `0` means the operator set no cap |
 | `reset_utc` | when the quota window resets, ISO 8601 UTC — the first instant of the next utc month |
 
@@ -207,16 +207,20 @@ timeout of at least 30 s.
 
 ### quota semantics
 
-- **the monthly cap is whatsapp-only.** it counts *delivered* whatsapp sends in
-  the current utc calendar month. telegram is **never metered against it** — not
-  blocked by the monthly gate, not counted. telegram delivery is still billed by
-  nobody, but it is not a promise about cost: whatsapp delivery is billed by Meta
-  to the operator of this installation.
+- **the monthly cap is whatsapp-only.** it counts whatsapp sends the provider
+  **accepted** in the current utc calendar month. telegram is **never metered
+  against it** — not blocked by the monthly gate, not counted. telegram delivery
+  is still billed by nobody, but it is not a promise about cost: whatsapp
+  delivery is billed by Meta to the operator of this installation.
+- **a send the provider rejected is never counted** — not against the monthly
+  cap, not against the per-phone window — but it is always logged, so delivery
+  problems stay auditable.
+- **usage only goes up.** once the provider accepts a message it stays counted,
+  even if a later delivery-status callback reports it failed. that is
+  deliberate: a counter that drops when messages succeed is not a spend limit,
+  and the earlier behaviour let quota come back as callbacks arrived.
 - **per-phone limit: 5 sends/hour, across both channels.** this stops someone
   hammering "resend" against a victim's number on a stolen screen.
-- **failed sends are never counted** — not against the monthly cap, not against
-  the per-phone window — but they are always logged, so delivery problems stay
-  auditable.
 - a `409 user_not_linked` (see **telegram linking** below) consumes nothing: no
   code stored, no quota, no throttle.
 - when the monthly cap is hit you get `429 quota_exceeded` with a `Retry-After`
@@ -322,7 +326,7 @@ curl "$WAOTP_API/v1/otp/usage" -H "X-Api-Key: $WAOTP_KEY"
 
 | Field | Meaning |
 |---|---|
-| `used` | whatsapp sends delivered this utc month. telegram sends are not included, because they are never metered against the cap |
+| `used` | whatsapp sends the provider accepted this utc month. telegram sends are not included, because they are never metered against the cap |
 | `limit` | the installation's monthly whatsapp cap; `0` means the operator set no cap at all |
 | `reset_utc` | first instant of the next utc month |
 

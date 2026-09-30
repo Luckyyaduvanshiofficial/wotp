@@ -164,10 +164,14 @@ migrate((app) => {
       { name: "wa_message_id", type: "text", max: 128 },
       { name: "channel", type: "select", values: ["whatsapp", "telegram"], maxSelect: 1 },
       // "sent" is written by the send path; the rest arrive later from the
-      // provider's status webhook. Quota counts status="sent" rows, so a
-      // later "failed" callback does not retroactively consume quota.
+      // provider's status webhook. Quota does NOT count this field — see
+      // `billable` below and 1789430500_immutable_billable_usage.pb.js.
       { name: "status", type: "select",
         values: ["sent", "delivered", "read", "failed"], maxSelect: 1 },
+      // Written once by the send path when the provider accepted the message
+      // and never updated afterwards. Added by the billable migration on
+      // installs created before it existed.
+      { name: "billable", type: "bool" },
       { name: "error", type: "text", max: 500 },
     ],
     // idx_owner_created serves the quota count (owner + created range);

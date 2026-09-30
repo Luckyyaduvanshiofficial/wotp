@@ -231,6 +231,12 @@ async def send_otp(
                     "wa_message_id": provider_message_id,
                     "status": "sent",
                     "error": "",
+                    # Usage is recorded here, at the moment the provider
+                    # accepted the message, and is never written again. Status
+                    # callbacks (sent -> delivered/read/failed) update `status`
+                    # only, so the monthly count cannot be reduced by a
+                    # callback — see services/quota.py::monthly_used.
+                    "billable": body.channel == "whatsapp",
                 },
             )
             await create_otp(
@@ -339,6 +345,10 @@ async def _log_failure(pb, owner, api_key, phone, channel, error):
                 "wa_message_id": "",
                 "status": "failed",
                 "error": (error or "")[:500],
+                # The provider rejected this before accepting it, so it is not
+                # usage. Explicit false rather than omitted: a missing field
+                # would be indistinguishable from an old row during backfill.
+                "billable": False,
             },
         )
     except Exception:

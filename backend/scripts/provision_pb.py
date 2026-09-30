@@ -153,6 +153,12 @@ def collection_payload(logical: str, physical: str, ids: dict[str, str]) -> dict
             # provider's status webhook.
             {"name": "status", "type": "select",
              "values": ["sent", "delivered", "read", "failed"], "maxSelect": 1},
+            # Written ONCE by the send path when the provider accepted the
+            # message, and never updated afterwards. This — not `status` — is
+            # what the monthly cap counts: status moves to delivered/read as
+            # callbacks arrive, so counting it would make usage shrink as
+            # messages succeeded. See the billable migration.
+            {"name": "billable", "type": "bool"},
             {"name": "error", "type": "text", "max": 500},
         ]
         indexes = [

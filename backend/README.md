@@ -100,16 +100,28 @@ route, generated from the same catalog as [docs/api.md](docs/api.md) §7.
 
 ### Cap semantics
 
-The monthly cap counts **WhatsApp-delivered sends only** — Telegram is never
-metered against it, so a Telegram-only install is unaffected by it.
-`monthly_used`, `used` and `/v1/otp/usage.used` all count WhatsApp-delivered
-sends; a Telegram send reports the current WhatsApp count without incrementing
-it. A cap of `0` means the operator set no limit.
+The monthly cap counts **WhatsApp sends the provider accepted** — Telegram is
+never metered against it, so a Telegram-only install is unaffected by it.
+`monthly_used`, `used` and `/v1/otp/usage.used` all count them; a Telegram send
+reports the current WhatsApp count without incrementing it. A cap of `0` means
+the operator set no limit.
+
+Usage is counted from `messages.billable`, which the send path writes **once**,
+when the provider accepts the message, and never updates again. It is
+deliberately not derived from `status`: status moves to `delivered`/`read` as
+callbacks arrive, so counting it made the cap shrink every time a message was
+delivered successfully. Status callbacks therefore cannot change what has been
+counted, and a message the provider rejected outright is written with
+`billable=false` and never counts — it is still logged with `status=failed`, so
+the audit trail stays complete.
+
+One consequence, stated plainly because it is a behaviour change: a message the
+provider accepted and *later* reported failed stays counted. The provider took
+it; whether Meta bills for it is not something this app can know, and
+under-counting is the failure mode that costs the operator money.
 
 The per-phone hourly throttle applies to **both** channels (victim-number
-protection), as does the per-key and per-IP rate limit. **Failed sends never
-consume the cap** — they are still logged in `messages` with `status=failed`, so
-the audit trail stays complete.
+protection), as does the per-key and per-IP rate limit.
 
 ### Concurrency
 
