@@ -56,6 +56,65 @@ def test_settings_env_loaded():
     assert Fernet(get_settings().waotp_fernet_key.encode())
 
 
+# ---- phone numbers must not survive into logs ----
+
+
+def test_mask_phone_hides_the_number_but_stays_correlatable():
+    from app.core.security import mask_phone
+
+    masked = mask_phone("919876543210")
+    assert "987654" not in masked
+    assert masked.endswith("(len 12)")
+    # two different numbers must not collide on the visible part
+    assert mask_phone("919876543210") != mask_phone("919876543299")
+
+    assert mask_phone("") == "(none)"
+    assert mask_phone("12") == "**"
+
+
+def test_failed_send_logs_do_not_contain_the_phone_number(client, monkeypatch, caplog):
+    """The audit-failure path logs the phone; it must be masked, not raw."""
+    import logging
+
+    from conftest import AUTH, add_developer
+    from app.core.config import get_settings
+    from app.core.security import encrypt_secret
+    from app.services.pocketbase import PocketBaseError
+    from conftest import FakePB
+
+    c, fake = client
+    add_developer(fake)
+    fake.records["settings"]["set1"]["meta_phone_number_id"] = "PN123"
+    fake.records["settings"]["set1"]["meta_token_enc"] = encrypt_secret("REALMETA")
+    monkeypatch.setenv("WAOTP_MOCK_DELIVERY", "0")
+    get_settings.cache_clear()
+
+    async def provider_rejects(*args, **kwargs):
+        from app.providers import ProviderError
+        raise ProviderError("template not approved")
+
+    original_create = FakePB.create
+
+    async def create_fails(self, collection, data):
+        if collection == "messages":
+            raise PocketBaseError(500, "pb write failed")
+        return await original_create(self, collection, data)
+
+    monkeypatch.setattr("app.providers.meta.MetaProvider.send_otp", provider_rejects)
+    monkeypatch.setattr(FakePB, "create", create_fails)
+
+    with caplog.at_level(logging.CRITICAL, logger="waotp"):
+        c.post(
+            "/v1/otp/send",
+            json={"to": "919876543210"},
+            headers=AUTH,
+        )
+
+    text = caplog.text
+    assert "919876543210" not in text, text
+    assert "***10" in text, text
+
+
 # ---- sandbox template shape is configuration, not a baked-in name ----
 
 

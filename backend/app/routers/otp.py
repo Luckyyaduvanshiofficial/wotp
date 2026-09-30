@@ -20,7 +20,12 @@ from ..core.errors import (
     UpstreamUnavailable,
     error_responses,
 )
-from ..core.security import generate_otp_code, make_link_token, normalize_phone
+from ..core.security import (
+    generate_otp_code,
+    make_link_token,
+    mask_phone,
+    normalize_phone,
+)
 from ..dependencies import idempotency_store, owner_lock, require_api_key, verify_lock
 from ..providers import ProviderError, build_whatsapp_provider
 from ..services import telegram as telegram_service
@@ -254,7 +259,7 @@ async def send_otp(
                 provider_message_id,
                 body.channel,
                 owner["id"],
-                phone,
+                mask_phone(phone),
                 exc_info=exc,
             )
             raise DeliveryFailed(
@@ -360,6 +365,6 @@ async def _log_failure(pb, owner, api_key, phone, channel, error):
         logger.critical(
             "audit row for failed send could not be written — channel=%s "
             "owner=%s phone=%s error=%s",
-            channel, owner["id"], phone, (error or "")[:300],
+            channel, owner["id"], mask_phone(phone), (error or "")[:300],
             exc_info=True,
         )

@@ -26,6 +26,26 @@ def sha256_hex(value: str) -> str:
     return hashlib.sha256(value.encode("utf-8")).hexdigest()
 
 
+def mask_phone(phone: str) -> str:
+    """A phone number reduced to something safe to put in a log line.
+
+    Logs are the least-controlled copy of personal data an installation keeps:
+    shipped to aggregators, grepped by support, retained far longer than the
+    database. Phone numbers are the one piece of end-user PII this service
+    handles, so they are written as a length plus the last two digits — enough
+    to correlate two lines during an incident, not enough to identify anyone.
+
+    Used for every phone number that reaches a log. Record ids, message ids and
+    request ids are logged in full: they are opaque and they are what makes a
+    support request traceable.
+    """
+    if not phone:
+        return "(none)"
+    if len(phone) <= 2:
+        return "*" * len(phone)
+    return f"***{phone[-2:]} (len {len(phone)})"
+
+
 def generate_api_key() -> str:
     """Plaintext key; only its sha256 is ever stored."""
     return API_KEY_PREFIX + secrets.token_hex(20)
