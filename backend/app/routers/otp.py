@@ -21,7 +21,7 @@ from ..core.errors import (
     error_responses,
 )
 from ..core.security import generate_otp_code, make_link_token, normalize_phone
-from ..dependencies import idempotency_store, key_lock, require_api_key, verify_lock
+from ..dependencies import idempotency_store, owner_lock, require_api_key, verify_lock
 from ..providers import ProviderError, build_whatsapp_provider
 from ..services import telegram as telegram_service
 from ..services.otp import create_otp, verify_otp
@@ -120,13 +120,18 @@ async def send_otp(
     now = _utcnow()
 
     # Serialize the whole send (quota check -> throttle check -> provider
-    # delivery -> ledger writes) per API key. The lock intentionally spans the
+    # delivery -> ledger writes) per OWNER. The lock intentionally spans the
     # provider await: without it, two concurrent sends could both pass the
     # quota/throttle checks before either wrote its ledger rows.
-    async with key_lock(api_key["id"]):
+    #
+    # Owner-scoped rather than key-scoped because the cap and the throttle are
+    # owner-scoped, and one owner may hold several active keys (up to
+    # MAX_ACTIVE_KEYS_PER_OWNER). Keying on the key id would leave the
+    # double-spend open across any two of them.
+    async with owner_lock(owner["id"]):
         # Idempotency replay: a retry with the same Idempotency-Key inside
         # the code's lifetime returns the original response instead of
-        # double-sending. Checked inside the per-key lock so a concurrent
+        # double-sending. Checked inside the per-owner lock so a concurrent
         # duplicate waits for — and then replays — the first send.
         if idem is not None:
             replayed = idempotency_store.get((api_key["id"], idem))

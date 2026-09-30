@@ -499,10 +499,10 @@ expired codes, exhausted attempts, replayed idempotency keys, throttled numbers,
 timeouts, malformed webhook payloads and bad signatures — not only the happy path.
 
 The single-uvicorn-worker constraint is a **correctness requirement**, not tuning, and it is documented
-at the point where it matters in `backend/Dockerfile`. The per-key and per-phone `asyncio` locks, the
-idempotency replay store and the cached PocketBase superuser token are all process-global state. A
-second worker silently breaks idempotency and double-send protection. To scale out, move that state into
-a shared store first.
+at the point where it matters in `backend/Dockerfile`. The per-owner and per-phone `asyncio` locks, the
+idempotency replay store, the rate limiters and the cached PocketBase superuser token are all
+process-global state. A second worker silently breaks idempotency, lets two concurrent sends pass the
+same quota check, and halves every rate limit. To scale out, move that state into a shared store first.
 
 ## Project layout
 

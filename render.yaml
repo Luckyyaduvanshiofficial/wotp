@@ -40,7 +40,7 @@ services:
     rootDir: backend
     buildCommand: pip install -r requirements.txt
     # `--workers 1` is a correctness requirement, not a tuning knob. The app
-    # holds per-key asyncio locks around sends and a process-local idempotency
+    # holds a per-owner asyncio lock around sends and a process-local idempotency
     # store (app/dependencies.py), and PocketBase's superuser token is cached per
     # process. A second worker breaks all three. Do not scale this service
     # horizontally without rethinking that state — see ../CLAUDE.md.

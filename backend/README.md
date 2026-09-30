@@ -126,12 +126,22 @@ protection), as does the per-key and per-IP rate limit.
 ### Concurrency
 
 A **single uvicorn worker** is a correctness requirement, not a tuning choice.
-A per-key `asyncio` lock wraps each send (cap check → throttle check → provider
-delivery → audit writes) and a per-(owner, phone) lock wraps each verify. The
-idempotency replay store and the cached PocketBase superuser token are
-process-global too. Two workers would each hold their own locks and their own
-replay cache, so a retried request could deliver twice. Move that state into a
-shared store before scaling out.
+A per-owner `asyncio` lock wraps each send (cap check → throttle check →
+provider delivery → audit writes) and a per-(owner, phone) lock wraps each
+verify. The idempotency replay store, the rate limiters and the cached
+PocketBase superuser token are process-global too. Two workers would each hold
+their own locks and their own replay cache, so a retried request could deliver
+twice and two concurrent sends could each pass the same quota check.
+
+The send lock is keyed on the **owner**, not the API key, because the monthly
+cap and the per-phone throttle are owner-scoped while one owner may hold up to
+five active keys — a key-scoped lock would leave the double-spend open across
+any two of them.
+
+Move that state into a shared store before scaling out. Until then this
+limitation is real and is not worked around: it is enforced by the single
+`--workers 1` in every deployment path this repo ships (Dockerfile, render.yaml)
+and by the fact that nothing here reads a shared lock or counter.
 
 ### Errors
 

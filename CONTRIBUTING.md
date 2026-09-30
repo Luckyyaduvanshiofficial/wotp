@@ -86,7 +86,7 @@ These come from [`CLAUDE.md`](CLAUDE.md)'s gotchas. They are not style preferenc
 - **Every route must declare its errors** in the OpenAPI spec via `error_responses()` in `app/core/errors.py`, and stay in sync with `docs/api.md` §7. A new error code without both is an incomplete change.
 - **Validation errors must never echo raw input.** Return the whitelisted `detail: [{loc, msg, type}]` shape.
 - **PocketBase stays on v0.40.x** unless you also update the migration.
-- **Do not add a second uvicorn worker** without rethinking concurrency. The per-key `asyncio` lock around sends and the per-(owner, phone) lock around verifies are the only thing preventing concurrent quota double-spend and duplicate verification. They are process-local by design.
+- **Do not add a second uvicorn worker** without rethinking concurrency. The per-owner `asyncio` lock around sends and the per-(owner, phone) lock around verifies are the only thing preventing concurrent quota double-spend and duplicate verification. They are process-local by design.
 - **Limits belong in the `settings` row, not in code.** Env values are fallbacks. If you are adding a tunable, add it to settings.
 
 ## Tests

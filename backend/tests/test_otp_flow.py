@@ -604,6 +604,114 @@ def test_concurrent_sends_cannot_exceed_quota(client, monkeypatch):
     assert len(fake.records["messages"]) == 1  # exactly one ledger row
 
 
+def test_two_keys_of_one_owner_cannot_double_spend_quota(client, monkeypatch):
+    """The cap and the throttle are owner-scoped, so the lock must be too.
+
+    Reproduces the gap this replaces: the send lock was keyed on the API key
+    id, so two concurrent sends on two different keys belonging to the same
+    owner each passed the quota check before either wrote its ledger row — and
+    both delivered, over cap.
+    """
+    import asyncio
+    import threading
+
+    from app.core.config import get_settings
+    from app.core.security import encrypt_secret, sha256_hex
+
+    c, fake = client
+    add_developer(fake)
+
+    second_key = "waotp_secondkey000000000000000000000000000"
+    fake.records["api_keys"]["key2"] = {
+        "id": "key2", "owner": "usr1", "key_hash": sha256_hex(second_key),
+        "last4": second_key[-4:], "label": "second", "active": True,
+    }
+    fake.records["settings"]["set1"]["monthly_send_quota"] = 1
+    fake.records["settings"]["set1"]["meta_phone_number_id"] = "PN123"
+    fake.records["settings"]["set1"]["meta_token_enc"] = encrypt_secret("REALMETA")
+
+    monkeypatch.setenv("WAOTP_MOCK_DELIVERY", "0")
+    get_settings.cache_clear()
+
+    async def slow_send(*args, **kwargs):
+        await asyncio.sleep(0.05)  # hold the lock across the provider await
+        return "prov-msg-1"
+
+    monkeypatch.setattr("app.providers.meta.MetaProvider.send_otp", slow_send)
+
+    barrier = threading.Barrier(2)
+    statuses = []
+
+    def hit(key):
+        barrier.wait()
+        r = c.post("/v1/otp/send", json={"to": "919876543210"}, headers={"X-Api-Key": key})
+        statuses.append(r.status_code)
+
+    threads = [
+        threading.Thread(target=hit, args=(TEST_KEY,)),
+        threading.Thread(target=hit, args=(second_key,)),
+    ]
+    for t in threads:
+        t.start()
+    for t in threads:
+        t.join()
+
+    assert sorted(statuses) == [200, 429]
+    assert len(fake.records["messages"]) == 1  # exactly one ledger row
+
+
+def test_two_keys_of_one_owner_share_the_phone_throttle(client, monkeypatch):
+    """Same gap, via the per-phone throttle rather than the monthly cap."""
+    import asyncio
+    import threading
+
+    from app.core.config import get_settings
+    from app.core.security import encrypt_secret, sha256_hex
+
+    c, fake = client
+    add_developer(fake)
+
+    second_key = "waotp_secondkey000000000000000000000000001"
+    fake.records["api_keys"]["key2"] = {
+        "id": "key2", "owner": "usr1", "key_hash": sha256_hex(second_key),
+        "last4": second_key[-4:], "label": "second", "active": True,
+    }
+    # cap off; the throttle is the only limit under test
+    fake.records["settings"]["set1"]["monthly_send_quota"] = 0
+    fake.records["settings"]["set1"]["per_phone_hourly"] = 1
+    fake.records["settings"]["set1"]["meta_phone_number_id"] = "PN123"
+    fake.records["settings"]["set1"]["meta_token_enc"] = encrypt_secret("REALMETA")
+
+    monkeypatch.setenv("WAOTP_MOCK_DELIVERY", "0")
+    get_settings.cache_clear()
+
+    async def slow_send(*args, **kwargs):
+        await asyncio.sleep(0.05)
+        return "prov-msg-1"
+
+    monkeypatch.setattr("app.providers.meta.MetaProvider.send_otp", slow_send)
+
+    barrier = threading.Barrier(2)
+    statuses = []
+
+    def hit(key):
+        barrier.wait()
+        r = c.post("/v1/otp/send", json={"to": "919876543210"}, headers={"X-Api-Key": key})
+        statuses.append(r.status_code)
+
+    threads = [
+        threading.Thread(target=hit, args=(TEST_KEY,)),
+        threading.Thread(target=hit, args=(second_key,)),
+    ]
+    for t in threads:
+        t.start()
+    for t in threads:
+        t.join()
+
+    assert sorted(statuses) == [200, 429]
+    assert len(fake.records["messages"]) == 1
+
+
 # ---- P1: malformed JSON must 400, not 500 ----
 
 

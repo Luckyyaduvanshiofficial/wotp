@@ -42,14 +42,22 @@ _UNKNOWN_KEY_MAX = 4096
 _unknown_key_cache: dict[str, float] = {}
 
 # Single-worker process: plain dicts of asyncio.Lock are fine (unbounded by
-# design — one entry per key id / (owner, phone) pair, cleared on restart).
-_key_locks: dict[str, asyncio.Lock] = {}
+# design — one entry per owner id / (owner, phone) pair, cleared on restart).
+_owner_locks: dict[str, asyncio.Lock] = {}
 _verify_locks: dict[tuple[str, str], asyncio.Lock] = {}
 
 
-def key_lock(key_id: str) -> asyncio.Lock:
-    """Serializes /v1/otp/send per API key (quota -> delivery -> ledger writes)."""
-    return _key_locks.setdefault(key_id, asyncio.Lock())
+def owner_lock(owner_id: str) -> asyncio.Lock:
+    """Serializes /v1/otp/send per OWNER (quota -> delivery -> ledger writes).
+
+    Per owner, not per API key, and that distinction is the whole point: the
+    monthly cap and the per-phone throttle are both owner-scoped, while one
+    owner may hold several active keys. Keying the lock on the key would let
+    two concurrent sends on two different keys of the same owner each pass the
+    quota check before either wrote its ledger row — the exact double-spend
+    this lock exists to prevent.
+    """
+    return _owner_locks.setdefault(owner_id, asyncio.Lock())
 
 
 def verify_lock(owner_id: str, phone: str) -> asyncio.Lock:
