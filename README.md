@@ -479,12 +479,19 @@ The link is per-installation: it is stored in your database, tied to your bot, a
 </details>
 
 <details>
-<summary><strong>Known limitation: ledger write after successful delivery</strong></summary>
+<summary><strong>The one failure that is cached: ledger write after successful delivery</strong></summary>
 
 If the PocketBase write fails *after* Meta has accepted the message, the API returns
 `502 delivery_failed` with `retryable: false` and logs the provider message ID for manual
-reconciliation. An automatic retry may double-send. Clients that care about this can send an
-`Idempotency-Key` header to make retries safe.
+reconciliation. This cannot be made atomic — the provider call already happened — so instead it is
+made **replayable**: the error is cached under your `Idempotency-Key`, and a retry carrying that
+same key gets the identical `502` back instead of putting a second code on the user's phone.
+
+Without an `Idempotency-Key` there is nothing to key the replay on, so a retry *will* double-send.
+**Send an `Idempotency-Key` on every send** and retries become safe in every failure mode.
+
+A transport error during those writes (PocketBase unreachable, connection reset) is treated the same
+way — it is a delivered message whose bookkeeping failed, not a `503`.
 
 </details>
 

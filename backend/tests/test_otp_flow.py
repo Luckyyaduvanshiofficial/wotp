@@ -263,8 +263,8 @@ def test_send_idempotency_replay_expires_with_the_code(client):
     # backdate the cache entry past the code TTL (300 s in test settings)
     from app import dependencies
     entry = ("key1", "k1")
-    _expires, body = dependencies.idempotency_store._entries[entry]
-    dependencies.idempotency_store._entries[entry] = (0.0, body)
+    _expires, status, body = dependencies.idempotency_store._entries[entry]
+    dependencies.idempotency_store._entries[entry] = (0.0, status, body)
 
     second = send(client=c, headers=hdrs)
     assert second.status_code == 200
@@ -871,6 +871,127 @@ def test_ledger_write_failure_returns_502_and_logs(client, monkeypatch, caplog):
     assert body["retryable"] is False  # retrying would double-send
     assert not fake.records["messages"] and not fake.records["otp_codes"]
     assert any("wa_message_id=mock-" in rec.getMessage() for rec in caplog.records)
+
+
+# ---- F19: a delivered send whose ledger write failed must not be re-sent ----
+
+
+def test_post_delivery_ledger_failure_is_replayed_not_resent(client, monkeypatch, caplog):
+    """The provider accepted the message; a retry must not send a second one.
+
+    Before this, the error was returned once and never cached, so the retry
+    with the same Idempotency-Key delivered another OTP — and only the newest
+    code verifies, so the user's first message became dead.
+    """
+    import logging
+
+    from app.core.config import get_settings
+    from app.core.security import encrypt_secret
+    from app.services.pocketbase import PocketBaseError
+    from conftest import FakePB
+
+    c, fake = client
+    add_developer(fake)
+    fake.records["settings"]["set1"]["meta_phone_number_id"] = "PN123"
+    fake.records["settings"]["set1"]["meta_token_enc"] = encrypt_secret("REALMETA")
+    monkeypatch.setenv("WAOTP_MOCK_DELIVERY", "0")
+    get_settings.cache_clear()
+
+    delivered = []
+
+    async def counting_send(*args, **kwargs):
+        delivered.append(kwargs.get("code") or args[2])
+        return f"prov-{len(delivered)}"
+
+    monkeypatch.setattr("app.providers.meta.MetaProvider.send_otp", counting_send)
+
+    original_create = FakePB.create
+
+    async def create_fails(self, collection, data):
+        if collection == "messages":
+            raise PocketBaseError(500, "pb write failed")
+        return await original_create(self, collection, data)
+
+    monkeypatch.setattr(FakePB, "create", create_fails)
+
+    hdrs = {**AUTH, "Idempotency-Key": "order-42"}
+    with caplog.at_level(logging.CRITICAL, logger="waotp"):
+        first = send(client=c, headers=hdrs)
+        second = send(client=c, headers=hdrs)
+
+    assert first.status_code == 502
+    assert first.json()["retryable"] is False
+
+    # the retry replays the same error instead of delivering a second code
+    assert second.status_code == 502
+    assert second.json() == first.json()
+    assert second.headers.get("Idempotency-Replayed") == "true"
+    assert len(delivered) == 1
+
+
+def test_post_delivery_transport_failure_is_not_a_503(client, monkeypatch):
+    """A PocketBase transport error after delivery must not be labelled
+    upstream_unavailable — that status explicitly invites a retry."""
+    import httpx
+
+    from app.core.config import get_settings
+    from app.core.security import encrypt_secret
+    from conftest import FakePB
+
+    c, fake = client
+    add_developer(fake)
+    fake.records["settings"]["set1"]["meta_phone_number_id"] = "PN123"
+    fake.records["settings"]["set1"]["meta_token_enc"] = encrypt_secret("REALMETA")
+    monkeypatch.setenv("WAOTP_MOCK_DELIVERY", "0")
+    get_settings.cache_clear()
+
+    async def fake_send(*args, **kwargs):
+        return "prov-msg-1"
+
+    original_create = FakePB.create
+
+    async def create_transport_fails(self, collection, data):
+        if collection == "messages":
+            raise httpx.ConnectError("connection refused")
+        return await original_create(self, collection, data)
+
+    monkeypatch.setattr("app.providers.meta.MetaProvider.send_otp", fake_send)
+    monkeypatch.setattr(FakePB, "create", create_transport_fails)
+
+    r = send(client=c, headers={**AUTH, "Idempotency-Key": "order-43"})
+    assert r.status_code == 502  # not 503
+    assert r.json()["error"] == "delivery_failed"
+    assert r.json()["retryable"] is False
+
+
+def test_provider_rejection_is_still_retryable_and_uncached(client, monkeypatch):
+    """Only the delivered-but-unrecorded failure is cached. A provider
+    rejection must stay genuinely retryable."""
+    from app.core.config import get_settings
+    from app.core.security import encrypt_secret
+
+    c, fake = client
+    add_developer(fake)
+    fake.records["settings"]["set1"]["meta_phone_number_id"] = "PN123"
+    fake.records["settings"]["set1"]["meta_token_enc"] = encrypt_secret("REALMETA")
+    monkeypatch.setenv("WAOTP_MOCK_DELIVERY", "0")
+    get_settings.cache_clear()
+
+    attempts = []
+
+    async def rejects(*args, **kwargs):
+        attempts.append(1)
+        from app.providers import ProviderError
+        raise ProviderError("template not approved")
+
+    monkeypatch.setattr("app.providers.meta.MetaProvider.send_otp", rejects)
+
+    hdrs = {**AUTH, "Idempotency-Key": "order-44"}
+    assert send(client=c, headers=hdrs).status_code == 502
+    second = send(client=c, headers=hdrs)
+    assert second.status_code == 502
+    assert "Idempotency-Replayed" not in second.headers
+    assert len(attempts) == 2  # the retry really was retried
 
 
 def test_old_otp_invalidated_on_resend(client):

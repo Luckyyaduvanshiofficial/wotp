@@ -149,31 +149,40 @@ def _remember_unknown(key_hash: str, now: float) -> None:
 
 class IdempotencyStore:
     """Replay cache for POST /v1/otp/send's optional Idempotency-Key header.
+
     Process-local like the rate limiter (single uvicorn worker; entries are
     lost on restart — a retry after a restart just sends a new code). Entries
     expire with the code TTL so a replay can never outlive the code it
-    returned: past expiry, a retry must send a fresh code, not replay a
-    dead one."""
+    returned: past expiry, a retry must send a fresh code, not replay a dead
+    one.
+
+    An entry is (status_code, body), not just a body, because one failure is
+    cached deliberately: the case where the provider accepted the message and
+    the ledger write afterwards failed. That message was delivered, so a naive
+    retry puts a second code on the user's phone — replaying the original error
+    is the point. Ordinary failures (provider rejection, throttle, not-linked)
+    are never cached and stay genuinely retryable.
+    """
 
     def __init__(self) -> None:
-        self._entries: dict[tuple[str, str], tuple[float, dict]] = {}
+        self._entries: dict[tuple[str, str], tuple[float, int, dict]] = {}
 
-    def get(self, key: tuple[str, str]) -> dict | None:
+    def get(self, key: tuple[str, str]) -> tuple[int, dict] | None:
         entry = self._entries.get(key)
         if entry is None:
             return None
-        expires, body = entry
+        expires, status, body = entry
         if time.monotonic() >= expires:
             del self._entries[key]
             return None
-        return body
+        return status, body
 
-    def put(self, key: tuple[str, str], body: dict, ttl_seconds: float) -> None:
+    def put(self, key: tuple[str, str], status: int, body: dict, ttl_seconds: float) -> None:
         if len(self._entries) > 10_000:  # bound memory: drop expired first
             now = time.monotonic()
-            for stale in [k for k, (exp, _) in self._entries.items() if exp <= now]:
+            for stale in [k for k, (exp, _, _) in self._entries.items() if exp <= now]:
                 del self._entries[stale]
-        self._entries[key] = (time.monotonic() + ttl_seconds, body)
+        self._entries[key] = (time.monotonic() + ttl_seconds, status, body)
 
     def reset(self) -> None:
         self._entries.clear()

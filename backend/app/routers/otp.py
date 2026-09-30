@@ -141,7 +141,12 @@ async def send_otp(
         if idem is not None:
             replayed = idempotency_store.get((api_key["id"], idem))
             if replayed is not None:
-                return JSONResponse(content=replayed, headers={"Idempotency-Replayed": "true"})
+                replayed_status, replayed_body = replayed
+                return JSONResponse(
+                    status_code=replayed_status,
+                    content=replayed_body,
+                    headers={"Idempotency-Replayed": "true"},
+                )
 
         # Monthly cap counts WhatsApp-delivered sends only; Telegram is not
         # metered against it. A cap of 0 means the operator set no limit.
@@ -227,9 +232,21 @@ async def send_otp(
                     ) from exc
 
         # Delivered: append audit row + store the hashed code (single-use).
-        # Known limitation: if these writes fail the code WAS delivered — a
-        # plain client retry may double-send (reconcile manually via
-        # wa_message_id); a retry carrying the same Idempotency-Key is safe.
+        #
+        # Ordering, and what it does and does not guarantee: the provider has
+        # already accepted the message by the time we get here, so these two
+        # writes are bookkeeping. They cannot be made atomic with the provider
+        # call — that is a property of talking to an external system, not
+        # something more code can fix — so instead the failure is made
+        # *replayable*: the error body is cached under the caller's
+        # Idempotency-Key, and a retry with that key gets the original error
+        # back instead of putting a second code on the user's phone.
+        #
+        # Broad on purpose: an httpx transport error here (PocketBase
+        # unreachable, connection reset) is the same situation as a rejected
+        # write — the message was delivered — and letting it escape would label
+        # a delivered send as 503 upstream_unavailable, which invites exactly
+        # the retry that double-sends.
         try:
             row = await pb.create(
                 wa_collection("messages"),
@@ -252,7 +269,7 @@ async def send_otp(
             await create_otp(
                 pb, owner["id"], api_key["id"], phone, code, cfg["code_ttl_seconds"], now
             )
-        except PocketBaseError as exc:
+        except Exception as exc:
             logger.critical(
                 "ledger write failed after delivery — reconcile wa_message_id=%s "
                 "channel=%s owner=%s phone=%s",
@@ -262,10 +279,20 @@ async def send_otp(
                 mask_phone(phone),
                 exc_info=exc,
             )
-            raise DeliveryFailed(
+            failure = DeliveryFailed(
                 channel=body.channel,
                 detail="delivered but not recorded; manual reconciliation required",
-            ) from exc
+            )
+            if idem is not None:
+                # Replaying this error is what stops the retry from
+                # double-sending. Cached for the code's lifetime, like a success.
+                idempotency_store.put(
+                    (api_key["id"], idem),
+                    failure.status_code,
+                    failure.body(),
+                    cfg["code_ttl_seconds"],
+                )
+            raise failure from exc
 
     response_body = {
         "ok": True,
@@ -280,9 +307,12 @@ async def send_otp(
     }
     if idem is not None:
         # Replay window = the code's lifetime; past expiry a retry must send
-        # a fresh code, not replay a dead one. Only successes are cached —
-        # failed sends stay retryable.
-        idempotency_store.put((api_key["id"], idem), response_body, cfg["code_ttl_seconds"])
+        # a fresh code, not replay a dead one. Only successes and the
+        # delivered-but-unrecorded failure are cached — ordinary failures stay
+        # retryable.
+        idempotency_store.put(
+            (api_key["id"], idem), 200, response_body, cfg["code_ttl_seconds"]
+        )
     return response_body
 
 

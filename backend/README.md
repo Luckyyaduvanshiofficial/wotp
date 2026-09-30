@@ -159,9 +159,11 @@ failures are not retryable). Validation errors return whitelisted
 
 Known limitation: if the PocketBase audit write fails *after* a successful
 delivery, the API returns `502 delivery_failed` (retryable: false) and logs the
-provider `message_id` for manual reconciliation — an automatic retry may
-double-send. Clients can avoid this with the `Idempotency-Key` header,
-documented in [docs/api.md](docs/api.md) §3.
+provider `message_id` for manual reconciliation. The provider call already
+happened, so this cannot be made atomic; instead the failure is made replayable
+under the caller's `Idempotency-Key`, so a same-key retry returns that error
+rather than double-sending. Without an `Idempotency-Key` a retry will send a
+second code. Documented in [docs/api.md](docs/api.md) §3.
 
 Operator note: deactivating a key from the PB admin UI (as opposed to via
 `DELETE /v1/keys/{id}`) takes effect only after the 60 s auth-cache TTL. The API

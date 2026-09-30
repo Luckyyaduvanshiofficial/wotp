@@ -400,9 +400,18 @@ manual rejects, where the phone number did not normalize — a plain string:
 
 one rare case: if the gateway delivers the message but then fails to record it in
 its ledger, you get `502 delivery_failed` with `retryable: false` and a detail
-mentioning manual reconciliation. if you retry anyway the user gets a second code
-— and only the newest code will verify. when in doubt, contact support with the
-timestamp, phone and channel.
+mentioning manual reconciliation. the message **was** delivered, so:
+
+- **with an `Idempotency-Key`**, retrying replays this exact error — the user
+  does not get a second code, and you can reconcile afterwards using the
+  `message_id`. this is the supported path.
+- **without one**, the gateway has nothing to key the replay on and a retry
+  *will* send a second code — and since only the newest code verifies, the first
+  message your user received becomes dead.
+
+send an `Idempotency-Key` on every send and this stops being a special case. a
+transport failure while writing those rows (the store briefly unreachable) is
+treated the same way — a delivered message, not a `503`.
 
 ### `Retry-After` on 429s — recap
 
