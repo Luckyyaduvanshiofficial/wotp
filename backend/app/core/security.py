@@ -63,8 +63,16 @@ def generate_otp_code(length: int | None = None) -> str:
     return f"{secrets.randbelow(10**n):0{n}d}"
 
 
+_ASCII_DIGITS = frozenset("0123456789")
+
+# Length of a national number in the default numbering plan, used only to
+# decide whether a bare digit string is missing its country code. The country
+# code itself is configuration (DEFAULT_COUNTRY_CODE), not a constant.
+NATIONAL_NUMBER_LENGTH = 10
+
+
 def normalize_phone(raw: str) -> str | None:
-    """Canonical form: digits only, country code included.
+    """Canonical form: digits only, country code included, no `+`.
 
     Self-hosters are not all in one country, so the country code is config
     (`DEFAULT_COUNTRY_CODE`, default `91`) rather than baked in. A bare
@@ -73,23 +81,40 @@ def normalize_phone(raw: str) -> str | None:
 
     Changes here are delivery-critical: the same function runs on send and on
     verify, so both sides always agree on the stored form.
+
+    Deliberately ASCII-only. `str.isdigit()` is true for fullwidth and
+    superscript digits, which used to be accepted here and then handed to the
+    provider as a recipient id that could never match a real number.
     """
     if not raw:
         return None
-    digits = "".join(ch for ch in raw if ch.isdigit())
+
+    kept: list[str] = []
+    for ch in raw:
+        if ch in _ASCII_DIGITS:
+            kept.append(ch)
+        elif ch.isdigit():
+            # A digit written in another numbering system (fullwidth,
+            # Devanagari, superscript). Dropping it like punctuation would turn
+            # one number into a different, structurally valid one and deliver
+            # the code to a stranger, so the input is refused instead.
+            return None
+    digits = "".join(kept)
     if not digits:
         return None
 
-    cc = "".join(ch for ch in get_settings().default_country_code if ch.isdigit())
-    national_len = 10  # the common case; only used for the bare-number path
+    # "00" is the international prefix, equivalent to "+".
+    if digits.startswith("00") and len(digits) > 2:
+        digits = digits[2:]
 
-    if cc and len(digits) == national_len:
-        digits = cc + digits
-    elif len(digits) == national_len + 1 and digits.startswith("0"):
-        # National format with a trunk prefix (e.g. 09876543210 -> +91 9876543210)
+    cc = "".join(ch for ch in get_settings().default_country_code if ch in _ASCII_DIGITS)
+
+    # National format with a trunk prefix (e.g. 09876543210 -> +91 9876543210)
+    if len(digits) == NATIONAL_NUMBER_LENGTH + 1 and digits.startswith("0"):
         digits = digits[1:]
-        if cc:
-            digits = cc + digits
+
+    if cc and len(digits) == NATIONAL_NUMBER_LENGTH:
+        digits = cc + digits
 
     if not MIN_PHONE_DIGITS <= len(digits) <= MAX_PHONE_DIGITS:
         return None

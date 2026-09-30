@@ -35,6 +35,37 @@ def test_normalize_phone():
     assert normalize_phone("abcdefghij") is None
 
 
+def test_normalize_phone_strips_the_international_prefix():
+    """'00' is the international prefix; 0091… and +91… are the same number."""
+    assert normalize_phone("00919876543210") == "919876543210"
+    assert normalize_phone("00 91 98765 43210") == "919876543210"
+
+
+def test_normalize_phone_rejects_non_ascii_digits():
+    """`str.isdigit()` is true for these, and they used to pass straight
+    through to the provider as a recipient id."""
+    assert normalize_phone("１２３４５６７８９０") is None  # fullwidth
+    assert normalize_phone("⁹¹⁹⁸⁷⁶⁵⁴³²¹⁰") is None  # superscript
+    assert normalize_phone("91987654321０") is None  # one fullwidth digit, 11 chars
+
+
+def test_normalize_phone_still_tolerates_punctuation():
+    assert normalize_phone("+91 (98765) 43210") == "919876543210"
+    assert normalize_phone("91-98765-43210") == "919876543210"
+
+
+def test_normalize_phone_enforces_e164_length_bounds():
+    assert normalize_phone("1234567890123456") is None  # 16 digits > E.164 max
+    assert normalize_phone("123456789012345") == "123456789012345"  # 15 = max
+
+
+def test_normalize_phone_is_idempotent():
+    """Send and verify both run this; normalizing twice must not drift."""
+    for raw in ("09876543210", "00919876543210", "+91 98765 43210", "9876543210"):
+        once = normalize_phone(raw)
+        assert normalize_phone(once) == once
+
+
 def test_link_token_roundtrip():
     token = make_link_token("usr1", "919876543210")
     parsed = parse_link_token(token)
