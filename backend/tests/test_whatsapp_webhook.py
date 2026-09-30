@@ -447,13 +447,13 @@ def test_production_requires_app_secret_when_whatsapp_is_configured():
 
     # WhatsApp via env without an app secret: refused
     with pytest.raises(ValueError) as exc:
-        Settings(**base, meta_phone_number_id="1314353638428219")
+        Settings(**base, meta_phone_number_id="1000000000000001")
     assert "META_APP_SECRET" in str(exc.value)
 
     # same, but the secret is present: boots
     Settings(
         **base,
-        meta_phone_number_id="1314353638428219",
+        meta_phone_number_id="1000000000000001",
         meta_app_secret="app-secret",
     )
 
