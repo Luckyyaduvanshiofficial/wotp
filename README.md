@@ -352,8 +352,10 @@ Four semantics that trip people up, so they are worth reading twice:
   to `0` if you do not want it.
 
 `TRUST_PROXY_HEADERS` decides whether the per-IP limiter believes `X-Forwarded-For`. Leave it off unless
-a reverse proxy you control **overwrites** that header — a client that can set it freely could otherwise
-rotate the value and bypass the limit entirely.
+a reverse proxy you control sits in front of the API. When it is on, the **right-most** entry in the
+header is used — the one your proxy appended — and it must parse as an IP address; anything else falls
+back to the socket peer. Reading the left-most entry instead would let a client forge a prefix and mint
+itself a fresh rate-limit bucket per request.
 
 ### Keeping secrets out of logs
 

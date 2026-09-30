@@ -333,6 +333,114 @@ def test_per_key_rate_limit(client):
     assert r.headers["Retry-After"] == "60"
 
 
+# ---- per-IP limiter runs BEFORE authentication ----
+
+
+def test_ip_rate_limit_applies_without_any_credential(client):
+    """The per-IP gate must cover a caller with no valid credential at all —
+    otherwise the only limit on unauthenticated traffic is nothing."""
+    c, fake = client
+    fake.records["settings"]["set1"]["ratelimit_per_ip_per_min"] = 1
+    from app.services.settings import invalidate_settings_cache
+    invalidate_settings_cache()
+
+    assert send(client=c, headers={}).status_code == 401  # no key at all
+    r = send(client=c, headers={})
+    assert r.status_code == 429
+    assert r.json()["error"] == "rate_limited"
+    assert r.headers["Retry-After"] == "60"
+
+
+def test_ip_rate_limit_applies_to_invented_keys(client):
+    """A flood of made-up keys must hit the IP ceiling, not sail past it."""
+    c, fake = client
+    fake.records["settings"]["set1"]["ratelimit_per_ip_per_min"] = 2
+    from app.services.settings import invalidate_settings_cache
+    invalidate_settings_cache()
+
+    hdrs = {"X-Api-Key": "waotp_0000000000000000000000000000000000000000"}
+    assert send(client=c, headers=hdrs).status_code == 401
+    assert send(client=c, headers=hdrs).status_code == 401
+    assert send(client=c, headers=hdrs).status_code == 429
+
+
+def test_unknown_api_key_is_negatively_cached(client, monkeypatch):
+    """Repeating an unknown key must not repeat the control-plane lookup."""
+    c, fake = client
+    add_developer(fake)
+
+    lookups = []
+    original_list = fake.list
+
+    async def counting_list(collection, **kwargs):
+        if collection == "api_keys":
+            lookups.append(collection)
+        return await original_list(collection, **kwargs)
+
+    monkeypatch.setattr(fake, "list", counting_list)
+
+    bad = {"X-Api-Key": "waotp_this-key-does-not-exist-00000000000"}
+    for _ in range(4):
+        assert send(client=c, headers=bad).status_code == 401
+    assert len(lookups) == 1
+
+
+def test_negative_cache_is_bounded(client):
+    """The negative cache itself must not be growable without limit."""
+    from app import dependencies
+
+    now = 1_000_000.0
+    for i in range(dependencies._UNKNOWN_KEY_MAX + 500):
+        dependencies._remember_unknown(f"hash-{i}", now)
+    assert len(dependencies._unknown_key_cache) <= dependencies._UNKNOWN_KEY_MAX
+
+
+def test_forwarded_header_is_ignored_unless_proxy_is_trusted(client, monkeypatch):
+    c, fake = client
+    add_developer(fake)
+    from app import dependencies
+    from app.core.config import get_settings
+
+    monkeypatch.setenv("TRUST_PROXY_HEADERS", "0")
+    get_settings.cache_clear()
+
+    assert send(client=c, headers={**AUTH, "X-Forwarded-For": "1.2.3.4"}).status_code == 200
+    assert "1.2.3.4" not in dependencies._ip_rate_limiter._hits
+    assert "testclient" in dependencies._ip_rate_limiter._hits
+
+
+def test_forwarded_header_uses_rightmost_entry_when_trusted(client, monkeypatch):
+    """The right-most entry is the one the nearest proxy appended; the left
+    side is client-controlled and must not become the limiter bucket."""
+    c, fake = client
+    add_developer(fake)
+    from app import dependencies
+    from app.core.config import get_settings
+
+    monkeypatch.setenv("TRUST_PROXY_HEADERS", "1")
+    get_settings.cache_clear()
+
+    r = send(client=c, headers={**AUTH, "X-Forwarded-For": "1.2.3.4, 5.6.7.8"})
+    assert r.status_code == 200
+    assert "5.6.7.8" in dependencies._ip_rate_limiter._hits
+    assert "1.2.3.4" not in dependencies._ip_rate_limiter._hits
+
+
+def test_unparseable_forwarded_header_falls_back_to_socket_peer(client, monkeypatch):
+    """A junk header must not mint a fresh limiter bucket per request."""
+    c, fake = client
+    add_developer(fake)
+    from app import dependencies
+    from app.core.config import get_settings
+
+    monkeypatch.setenv("TRUST_PROXY_HEADERS", "1")
+    get_settings.cache_clear()
+
+    assert send(client=c, headers={**AUTH, "X-Forwarded-For": "not-an-ip"}).status_code == 200
+    assert "not-an-ip" not in dependencies._ip_rate_limiter._hits
+    assert "testclient" in dependencies._ip_rate_limiter._hits
+
+
 def test_telegram_not_linked_then_linked(client):
     c, fake = client
     add_developer(fake)

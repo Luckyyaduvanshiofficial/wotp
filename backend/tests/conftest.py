@@ -185,6 +185,7 @@ def client():
         get_settings.cache_clear()
         invalidate_settings_cache()
         dependencies._api_key_cache.clear()
+        dependencies._unknown_key_cache.clear()
         dependencies._key_locks.clear()
         dependencies._verify_locks.clear()
         dependencies.rate_limiter.reset()
