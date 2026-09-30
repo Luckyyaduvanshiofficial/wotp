@@ -1,6 +1,17 @@
-fastapi>=0.115,<1
-uvicorn[standard]>=0.30
-httpx>=0.27
-pydantic>=2.9
-pydantic-settings>=2.6
-cryptography>=43
+# WA OTP — backend runtime dependencies.
+#
+# PINNED EXACTLY, and deliberately so. An OTP gateway handles phone numbers and
+# credential material, and a floating range means the code that ships is not the
+# code that was reviewed or tested: `fastapi>=0.115,<1` resolves to a different
+# tree today than it did last month. Bump these deliberately, in one commit,
+# with the full test suite run against the result.
+#
+# `requirements.lock.txt` pins the complete transitive set (including the
+# `uvicorn[standard]` extras) that the suite passes against, for reproducible
+# installs and so `pip-audit` has a fixed target.
+fastapi==0.141.1
+uvicorn[standard]==0.52.4
+httpx==0.28.1
+pydantic==2.13.5
+pydantic-settings==2.15.0
+cryptography==50.0.1

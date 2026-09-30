@@ -1,2 +1,6 @@
+# Development dependencies: the runtime set plus the test runner.
+#
+# Pinned like the runtime set, so a test result is reproducible rather than a
+# property of whatever resolved that day.
 -r requirements.txt
-pytest>=8
+pytest==9.1.1
