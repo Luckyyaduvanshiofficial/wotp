@@ -1,8 +1,8 @@
 /// <reference path="../pb_data/types.d.ts" />
 /**
- * Upgrade an EXISTING wa-otp install to the self-hosted schema.
+ * Upgrade an EXISTING wotp install to the self-hosted schema.
  *
- * Why this file exists: `1757750400_init_waotp.pb.js` was rewritten in place
+ * Why this file exists: `1757750400_init_wotp.pb.js` was rewritten in place
  * when this project stopped being a hosted service (dropped the free/paid tier,
  * closed public signup, added the webhook + per-IP limit fields). A fresh clone
  * is correct, but PocketBase records an applied migration by filename and will
@@ -19,7 +19,9 @@
  * the values — but they cannot be restored by the down migration either.
  */
 migrate((app) => {
-  const PREFIX = ($os.getenv("WAOTP_PB_COLLECTIONS_PREFIX") || "waotp_").trim()
+  const PREFIX = ($os.getenv("WOTP_PB_COLLECTIONS_PREFIX") ||
+    $os.getenv("WAOTP_PB_COLLECTIONS_PREFIX") ||
+    "waotp_").trim()
   const physical = (logical) => PREFIX + logical
 
   const CREATED = { name: "created", type: "autodate", onCreate: true }
@@ -177,7 +179,9 @@ migrate((app) => {
     // No settings collection: fresh install, nothing to upgrade.
   }
 }, (app) => {
-  const PREFIX = ($os.getenv("WAOTP_PB_COLLECTIONS_PREFIX") || "waotp_").trim()
+  const PREFIX = ($os.getenv("WOTP_PB_COLLECTIONS_PREFIX") ||
+    $os.getenv("WAOTP_PB_COLLECTIONS_PREFIX") ||
+    "waotp_").trim()
   const physical = (logical) => PREFIX + logical
 
   const CREATED = { name: "created", type: "autodate", onCreate: true }

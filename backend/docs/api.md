@@ -1,9 +1,9 @@
-# wa otp — integration reference
+# wotp — integration reference
 
 **api version:** 0.1.0 · **updated:** 2026-09-15
 **written for:** an ai agent doing the wiring, and the operator supervising it.
 
-wa otp is a two-call otp gateway. one endpoint sends a code over whatsapp or
+wotp is a two-call otp gateway. one endpoint sends a code over whatsapp or
 telegram, a second one checks it. the installation you are calling runs on
 someone's own whatsapp business account and applies its own monthly send cap to
 whatsapp; telegram is never metered against that cap.
@@ -17,10 +17,10 @@ around them — every field, every error code, and the retry decision for each.
 
 **conventions used here**
 
-- base url is written as `$WAOTP_API` — a shell variable, because there is no
+- base url is written as `$WOTP_API` — a shell variable, because there is no
   canonical live host to print. replace it with the host you were given.
 - every request and response is json; send `Content-Type: application/json`.
-- your api key looks like `waotp_xxxxxxxxxxxxxxxx` and travels in the `X-Api-Key`
+- your api key looks like `wotp_xxxxxxxxxxxxxxxx` and travels in the `X-Api-Key`
   header, never in a url.
 - `919876543210` is a placeholder phone number. use your own.
 
@@ -39,7 +39,7 @@ you write.
    invent a host. never guess a key.
 3. **put both in environment variables.** a key in source, in a log, or in a
    client bundle is a leaked key.
-4. **put both calls in the backend.** browser → your backend → wa otp is the only
+4. **put both calls in the backend.** browser → your backend → wotp is the only
    supported shape. the **security** section below explains why, and the gateway
    enforces it anyway.
 5. **build the flow in this order.** send → read `expires_in` from the response
@@ -92,7 +92,7 @@ recovery path by design.
 Prefer the api? issue a key with your dashboard bearer token:
 
 ```bash
-curl -X POST "$WAOTP_API/v1/keys" \
+curl -X POST "$WOTP_API/v1/keys" \
   -H "Authorization: Bearer $DASHBOARD_TOKEN" \
   -H "Content-Type: application/json" \
   -d '{"label": "my-mini-app"}'
@@ -102,7 +102,7 @@ response — store `api_key` immediately, you will never see it again:
 
 ```json
 {
-  "api_key": "waotp_xxxxxxxxxxxxxxxx",
+  "api_key": "wotp_xxxxxxxxxxxxxxxx",
   "last4": "xxxx",
   "label": "my-mini-app",
   "id": "k8f3k2m9xq01zb4"
@@ -116,10 +116,10 @@ response — store `api_key` immediately, you will never see it again:
 every `/v1/otp/*` route authenticates with your api key:
 
 ```
-X-Api-Key: waotp_xxxxxxxxxxxxxxxx
+X-Api-Key: wotp_xxxxxxxxxxxxxxxx
 ```
 
-- keys start with `waotp_`. the gateway stores only a sha256 hash — the plaintext
+- keys start with `wotp_`. the gateway stores only a sha256 hash — the plaintext
   exists at creation time and nowhere else.
 - **shown once.** the creation response is the only time you see the full key.
   lost it? regenerate. there is no recovery, by design.
@@ -153,8 +153,8 @@ retire one key — one per app or per environment, say.
 delivers a code to one phone.
 
 ```bash
-curl -X POST "$WAOTP_API/v1/otp/send" \
-  -H "X-Api-Key: $WAOTP_KEY" \
+curl -X POST "$WOTP_API/v1/otp/send" \
+  -H "X-Api-Key: $WOTP_KEY" \
   -H "Content-Type: application/json" \
   -d '{"to": "919876543210", "channel": "whatsapp"}'
 ```
@@ -170,8 +170,8 @@ curl -X POST "$WAOTP_API/v1/otp/send" \
 telegram instead of whatsapp — the same call with one field changed:
 
 ```bash
-curl -X POST "$WAOTP_API/v1/otp/send" \
-  -H "X-Api-Key: $WAOTP_KEY" \
+curl -X POST "$WOTP_API/v1/otp/send" \
+  -H "X-Api-Key: $WOTP_KEY" \
   -H "Content-Type: application/json" \
   -d '{"to": "919876543210", "channel": "telegram"}'
 ```
@@ -313,7 +313,7 @@ three behaviours worth knowing before you build:
 ## get /v1/otp/usage
 
 ```bash
-curl "$WAOTP_API/v1/otp/usage" -H "X-Api-Key: $WAOTP_KEY"
+curl "$WOTP_API/v1/otp/usage" -H "X-Api-Key: $WOTP_KEY"
 ```
 
 ```json
@@ -452,7 +452,7 @@ always sleep for the header's value, not a guess of your own.
 - **call the api from your backend, never the browser.** any key shipped in
   html or js is public the moment the page loads. the gateway enforces this too:
   cors is locked to the dashboard origin, so browser apps cannot read responses
-  anyway. mini app frontend → your backend → wa otp is the only supported shape.
+  anyway. mini app frontend → your backend → wotp is the only supported shape.
 - **treat the key like a password.** it is shown once and stored server-side only
   as a sha256 hash. keep it in an environment variable or a secret manager —
   never in git, never in client bundles, never in logs. rotate with
@@ -476,7 +476,7 @@ always sleep for the header's value, not a guess of your own.
 
 ## mock mode
 
-the gateway can run with `WAOTP_MOCK_DELIVERY=1` (an operator setting):
+the gateway can run with `WOTP_MOCK_DELIVERY=1` (an operator setting):
 **delivery is faked, but the api contract is identical** — same request fields,
 same responses, same errors, same quota and throttle logic, and codes are really
 stored so `/verify` works end to end. that makes it the right target for ci: your

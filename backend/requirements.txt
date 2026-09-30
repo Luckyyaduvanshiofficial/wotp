@@ -1,4 +1,4 @@
-# WA OTP — backend runtime dependencies.
+# WOTP — backend runtime dependencies.
 #
 # PINNED EXACTLY, and deliberately so. An OTP gateway handles phone numbers and
 # credential material, and a floating range means the code that ships is not the

@@ -14,7 +14,7 @@ export async function SiteNav() {
   return (
     <nav className='lm-nav' aria-label='primary'>
       <Link href='/' className='lm-nav__brand'>
-        wa otp
+        wotp
       </Link>
       <Link href='/telegram' className='lm-nav__link lm-nav__link--drop'>
         telegram

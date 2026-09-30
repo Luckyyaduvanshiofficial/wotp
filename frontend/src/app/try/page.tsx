@@ -8,7 +8,7 @@ import { SITE_URL } from '@/lib/site';
 export const metadata: Metadata = {
   title: 'Try the OTP API in your browser: no install, no signup',
   description:
-    'Run the real send and verify calls against a browser-local model of the WA OTP gateway. See every response body, status code and Retry-After before you self-host. No account, nothing sent.',
+    'Run the real send and verify calls against a browser-local model of the WOTP gateway. See every response body, status code and Retry-After before you self-host. No account, nothing sent.',
   keywords: [
     'OTP API demo',
     'try WhatsApp OTP API',
@@ -23,7 +23,7 @@ export const metadata: Metadata = {
     description:
       'Run the real send and verify calls against a browser-local model of the gateway. See every response body and status code before you self-host.',
     url: `${SITE_URL}/try`,
-    siteName: 'WA OTP',
+    siteName: 'WOTP',
     type: 'website'
   },
   twitter: {
@@ -46,11 +46,11 @@ const jsonLd = {
     },
     {
       '@type': 'WebAPI',
-      name: 'WA OTP gateway API',
+      name: 'WOTP gateway API',
       description:
         'Two-call OTP gateway API. One endpoint sends a code over WhatsApp or Telegram, one verifies it.',
       documentation: `${SITE_URL}/docs/api`,
-      provider: { '@type': 'Organization', name: 'WA OTP' }
+      provider: { '@type': 'Organization', name: 'WOTP' }
     }
   ]
 };

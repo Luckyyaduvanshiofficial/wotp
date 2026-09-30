@@ -1,9 +1,9 @@
 #!/usr/bin/env python
-"""Idempotent provisioning of the wa-otp collections on a (possibly shared)
+"""Idempotent provisioning of the wotp collections on a (possibly shared)
 self-hosted PocketBase instance, via the superuser REST API.
 
-Mirrors backend/pocketbase/pb_migrations/1757750400_init_waotp.pb.js 1:1, but
-every wa-otp collection is created under `--prefix` (default "waotp_") so it
+Mirrors backend/pocketbase/pb_migrations/1757750400_init_wotp.pb.js 1:1, but
+every wotp collection is created under `--prefix` (default "waotp_") so it
 can coexist with other projects' collections on the same PB instance.
 
 With a prefix set, the app also gets its OWN auth collection ({prefix}users)
@@ -33,7 +33,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 import httpx
 
 TIMEOUT = 30.0
-USER_AGENT = "waotp-provision/1.0"
+USER_AGENT = "wotp-provision/1.0"
 
 # Field templates below mirror the JS migration field-for-field, in the same
 # order. Index names AND the table names inside their SQL are written with the
@@ -90,7 +90,7 @@ SEED_SETTINGS = {
 
 
 def auth_collection_payload(physical: str) -> dict:
-    """POST /api/collections payload for the dedicated wa-otp auth collection.
+    """POST /api/collections payload for the dedicated wotp auth collection.
 
     System auth fields (password, tokenKey, email, emailVisibility, verified)
     are added by PocketBase automatically for type "auth". Rules:
@@ -131,7 +131,7 @@ def auth_collection_payload(physical: str) -> dict:
 
 
 def collection_payload(logical: str, physical: str, ids: dict[str, str]) -> dict:
-    """Full POST /api/collections payload for one wa-otp collection."""
+    """Full POST /api/collections payload for one wotp collection."""
     users_id = ids["users"]
 
     if logical == "api_keys":
@@ -313,7 +313,7 @@ def print_summary(rows: list[tuple[str, str, str]]) -> None:
 
 def main() -> int:
     parser = argparse.ArgumentParser(
-        description="Idempotently create the (prefixed) wa-otp collections on a "
+        description="Idempotently create the (prefixed) wotp collections on a "
                     "PocketBase instance via the superuser REST API."
     )
     parser.add_argument("--url", required=True,
@@ -350,7 +350,7 @@ def main() -> int:
             return 1
         headers = {"Authorization": r.json()["token"]}
 
-        # 2. developer auth collection. With a prefix, wa-otp gets its own
+        # 2. developer auth collection. With a prefix, wotp gets its own
         # {prefix}users auth collection (separate login pool from other apps);
         # without a prefix (dedicated instance), `status` is added to the
         # stock `users` instead. Relations in api_keys/... reference this id,
@@ -412,7 +412,7 @@ def main() -> int:
                     results.append(("users", "patched", "self-update guard on status/verified"))
             ids["users"] = users_json["id"]
 
-        # 3. prefixed wa-otp base collections; api_keys first because otp_codes
+        # 3. prefixed wotp base collections; api_keys first because otp_codes
         # and messages hold relations to it.
         order = [
             "api_keys", "otp_codes", "messages", "tg_links", "settings",

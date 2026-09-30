@@ -1,6 +1,6 @@
 # AGENTS.md
 
-Working notes for AI agents and humans in `frontend/` — the WA OTP dashboard and public
+Working notes for AI agents and humans in `frontend/` — the WOTP dashboard and public
 site. Read [`CLAUDE.md`](./CLAUDE.md) first for the short version; this file goes deeper on
 structure and conventions.
 
@@ -9,7 +9,7 @@ something here disagrees with those, they win.
 
 ## What this app is
 
-WA OTP is a WhatsApp/Telegram OTP gateway for Indian mini-app developers. This frontend is
+WOTP is a WhatsApp/Telegram OTP gateway for Indian mini-app developers. This frontend is
 two things in one Next.js app:
 
 - a **public site** — landing page and the integrator API reference at `/docs`
@@ -49,7 +49,7 @@ Two rules that matter:
 1. **PocketBase is only ever used for identity.** Never add a PocketBase read for OTP data,
    keys or usage — that all lives behind FastAPI, which owns the business logic. This is the
    whole point of the architecture; bypassing it means bypassing quota and throttling.
-2. **`NEXT_PUBLIC_PB_COLLECTIONS_PREFIX` must match `WAOTP_PB_COLLECTIONS_PREFIX` in
+2. **`NEXT_PUBLIC_PB_COLLECTIONS_PREFIX` must match `WOTP_PB_COLLECTIONS_PREFIX` in
    `backend/.env`.** The shared PocketBase instance also hosts another project. The prefix is
    the isolation mechanism. An unset *or empty* value falls back to `waotp_` in
    `src/lib/pb.ts` rather than to no prefix, on purpose — an unprefixed build would address
@@ -100,7 +100,7 @@ src/
 | File | What it holds |
 |---|---|
 | `api.ts` | **every** FastAPI call, its request/response types, `ApiError`, `ERROR_MESSAGES` |
-| `pb.ts` | the PocketBase singleton, collection name resolution, `WaotpUser`, `appOrigin()` |
+| `pb.ts` | the PocketBase singleton, collection name resolution, `WotpUser`, `appOrigin()` |
 | `query-client.ts` | the shared TanStack QueryClient |
 | `form.ts` · `form-context.ts` | `useAppForm` (`createFormHook`) and field contexts |
 | `key-handoff.ts` | sessionStorage handoff of a freshly created key |

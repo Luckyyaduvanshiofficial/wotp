@@ -199,7 +199,7 @@ export function OnboardingView() {
         </p>
         <Command code='.venv/bin/python scripts/create_admin.py you@example.com' />
         <p className='text-muted-foreground'>
-          It reads the password from <code>WAOTP_ADMIN_PASSWORD</code> if you omit it, which keeps
+          It reads the password from <code>WOTP_ADMIN_PASSWORD</code> if you omit it, which keeps
           the secret out of your shell history. Sign in at the dashboard with it afterwards. Running
           it again is safe and changes nothing.
         </p>
@@ -257,7 +257,7 @@ export function OnboardingView() {
         {ready?.mock_delivery ? (
           <p className='text-amber-500'>
             Mock delivery is on, so nothing will actually arrive. Set{' '}
-            <code>WAOTP_MOCK_DELIVERY=0</code> and restart before testing for real.
+            <code>WOTP_MOCK_DELIVERY=0</code> and restart before testing for real.
           </p>
         ) : null}
         <Button

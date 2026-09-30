@@ -1,4 +1,4 @@
-# WA OTP — FastAPI hot path (root-level for Dokploy / generic deployers).
+# WOTP — FastAPI hot path (root-level for Dokploy / generic deployers).
 #
 # Dokploy and similar platforms expect a Dockerfile at the repository root.
 # This file is a thin wrapper that sets the build context to the backend/
@@ -8,7 +8,7 @@
 # where each Dockerfile lives.
 #
 # Build directly:
-#   docker build -t waotp-api .
+#   docker build -t wotp-api .
 
 FROM python:3.12-slim
 
@@ -31,8 +31,8 @@ RUN pip install --no-cache-dir -r requirements.txt
 COPY backend/app ./app
 COPY backend/scripts ./scripts
 
-RUN useradd --create-home --uid 10001 waotp
-USER waotp
+RUN useradd --create-home --uid 10001 wotp
+USER wotp
 
 EXPOSE 8000
 

@@ -30,7 +30,7 @@
 
 services:
   - type: web
-    name: wa-otp-api
+    name: wotp-api
     runtime: python
     plan: free
     # Change this to the region nearest your users.
@@ -61,14 +61,14 @@ services:
       # --- Required ----------------------------------------------------------
       # Set to `production` to enable the fail-closed checks in
       # app/core/config.py: the app then REFUSES TO BOOT unless SECRET_KEY,
-      # WAOTP_FERNET_KEY and PB_SUPERUSER_PASSWORD are all set and mock delivery
+      # WOTP_FERNET_KEY and PB_SUPERUSER_PASSWORD are all set and mock delivery
       # is off. That is deliberate — booting with a missing signing key silently
       # weakens security, which is worse than not booting.
       - key: APP_ENV
         value: production
       # Must stay '0' in production: '1' fakes provider delivery while keeping
       # every DB row real. Useful locally; a silent outage in production.
-      - key: WAOTP_MOCK_DELIVERY
+      - key: WOTP_MOCK_DELIVERY
         value: '0'
 
       # --- Your PocketBase ---------------------------------------------------
@@ -79,7 +79,7 @@ services:
       # Only matters if that PocketBase instance is shared with another project;
       # it is what keeps this app's collections (and its waotp_users auth
       # collection) from colliding. Leave the default for a dedicated instance.
-      - key: WAOTP_PB_COLLECTIONS_PREFIX
+      - key: WOTP_PB_COLLECTIONS_PREFIX
         value: waotp_
       - key: PB_SUPERUSER_EMAIL
         sync: false
@@ -90,7 +90,7 @@ services:
       # Encrypts the Meta token at rest in the PB settings row, and signs
       # Telegram link tokens. Generate your own:
       #   python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"
-      - key: WAOTP_FERNET_KEY
+      - key: WOTP_FERNET_KEY
         sync: false
       # Any long random string. Signs sessions and link tokens.
       - key: SECRET_KEY
@@ -101,7 +101,7 @@ services:
 
       # --- Public URL of THIS service ---------------------------------------
       # Render assigns the hostname, so it cannot be a literal here. Set it to
-      # the URL Render shows you, e.g. https://wa-otp-api.onrender.com. It is
+      # the URL Render shows you, e.g. https://wotp-api.onrender.com. It is
       # used to derive and display this app's webhook URL:
       #   {APP_URL}/webhooks/whatsapp
       # No trailing slash.

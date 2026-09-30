@@ -2,13 +2,13 @@
 
 This document defines the architecture and **operational rules** for all AI coding
 agents (Claude, Cursor, Antigravity, Copilot, Windsurf, Roo Code, etc.) working in the
-**WA OTP** repository.
+**WOTP** repository.
 
 ---
 
 ## What This Repository Is
 
-**WA OTP** is a free, open-source, **BYOK** (bring-your-own-keys) WhatsApp & Telegram
+**WOTP** is a free, open-source, **BYOK** (bring-your-own-keys) WhatsApp & Telegram
 OTP gateway. It is meant to be self-hosted by whoever needs it, using **their own** Meta
 WhatsApp Cloud API credentials and **their own** Telegram bot. The project operates no
 infrastructure on anyone's behalf, holds no shared credentials, and pays for no messages.

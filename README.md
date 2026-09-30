@@ -1,41 +1,69 @@
 <div align="center">
 
-# WA OTP
+# WOTP — self-hosted WhatsApp & Telegram OTP gateway
 
-**Self-hosted OTP delivery over WhatsApp or Telegram. Two API calls: send a code, check a code.**
+**Open-source, self-hosted one-time-password API. Two HTTP calls: send a code, check a code.**
+**Bring your own WhatsApp Business account or Telegram bot — no hosted tier, nothing to pay this project.**
 
-Open source · Self-hostable · You bring your own WhatsApp Business account
+Self-hosted · Free forever · WhatsApp Cloud API + Telegram Bot API · Docker Compose · FastAPI + Next.js
 
 [![License: AGPL v3](https://img.shields.io/badge/License-AGPL_v3-blue.svg)](https://www.gnu.org/licenses/agpl-3.0)
 [![Free & Open Source: Forever](https://img.shields.io/badge/Free%20%26%20Open%20Source-Forever-emerald.svg)](https://www.gnu.org/licenses/agpl-3.0)
 [![Backend: FastAPI](https://img.shields.io/badge/backend-FastAPI-009688.svg)](https://fastapi.tiangolo.com)
 [![Control plane: PocketBase](https://img.shields.io/badge/control%20plane-PocketBase%20v0.40.x-B8DBE4.svg)](https://pocketbase.io)
 [![Frontend: Next.js 16](https://img.shields.io/badge/frontend-Next.js%2016-black.svg)](https://nextjs.org)
-[![Tests: no network required](https://img.shields.io/badge/tests-no%20network%20required-brightgreen.svg)](#development)
+[![Tests: no network required](https://img.shields.io/badge/159%20tests-no%20network%20required-brightgreen.svg)](#development)
+
+**[Try the whole API in your browser](frontend/src/app/try/page.tsx) — no install, no signup, nothing sent.**
 
 </div>
 
 ---
 
-## What this is
+## Table of contents
 
-WA OTP is free, open-source software you run yourself. You clone it, point it at **your own** database and **your own**
-WhatsApp Business account (or your own Telegram bot), and it sends and verifies phone-number codes for
-whatever app you are building.
+- [What WOTP is](#what-wotp-is)
+- [Why this exists](#why-this-exists)
+- [Features](#features)
+- [Try it without installing anything](#try-it-without-installing-anything)
+- [Quickstart](#quickstart)
+- [Documentation](#documentation)
+- [The two channels](#the-two-channels)
+- [Who this is for, and who it is not for](#who-this-is-for-and-who-it-is-not-for)
+- [The eleven questions](#the-eleven-questions)
+- [Architecture](#architecture)
+- [Install](#install)
+- [Connecting your WhatsApp account](#connecting-your-whatsapp-account)
+- [Operating it](#operating-it)
+- [API reference](#api-reference)
+- [Development](#development)
+- [Privacy](#privacy) · [Security](#security) · [License](#license)
 
-Your server calls it. Your users receive the code. Every phone number, message, API key and audit row
-lives in your database.
+## What WOTP is
+
+WOTP is free, open-source **OTP gateway software** you run yourself. You clone it, point it at **your own**
+database and **your own** WhatsApp Business account (or your own Telegram bot), and it sends and verifies
+phone-number codes for whatever app you are building.
+
+Your server calls it over HTTP. Your users receive the code on WhatsApp or Telegram. Every phone number,
+message, API key and audit row lives in your database, on your server, under your control.
+
+It is a gateway, not a provider. It sits between your application and a messaging account you already
+own, and it never touches your users' messages on anyone else's behalf.
 
 > [!NOTE]
 > **Free & Open Source Forever (AGPL-3.0)**
-> This software is 100% free and open-source forever. There are no paid enterprise editions, no paywalled features, no SaaS subscriptions, and no vendor lock-in. You own your code, run your own containers, and keep all your user data completely under your control.
+> This software is 100% free and open-source forever. There are no paid enterprise editions, no paywalled
+> features, no SaaS subscriptions, and no vendor lock-in. You own your code, run your own containers, and
+> keep all your user data completely under your control.
 
 > [!IMPORTANT]
-> **This project provides the software only. It does not provide WhatsApp messaging infrastructure, WhatsApp Business accounts, Meta credentials, phone numbers, hosting, or message credits.**
+> **This project provides the software only. It does not provide WhatsApp messaging infrastructure,
+> WhatsApp Business accounts, Meta credentials, phone numbers, hosting, or message credits.**
 
 That sentence is the whole business model, so it is worth being blunt about what it means:
 
-- There is **no hosted version of this**. Nobody operates a wa-otp service for you to sign up to.
+- There is **no hosted version of this**. Nobody operates a WOTP service for you to sign up to.
 - There is **no shared WhatsApp number, bot, or Meta account.** The code contains none, and there is no
   code path that could reach one.
 - There is **nothing to pay this project.** There is also nothing to pay for the software — the licence
@@ -44,6 +72,114 @@ That sentence is the whole business model, so it is worth being blunt about what
   commercial relationship between you and Meta, and this project has no part in it.
 - Running this costs whatever your server and your Meta usage cost. For a small app that is often close
   to nothing; it is not zero by definition, and this README will not pretend otherwise.
+
+## Why this exists
+
+Sending an OTP on WhatsApp means clearing four Meta requirements first: business verification with
+certified documents, an international card that survives recurring auto-debit, a phone number not already
+registered to the WhatsApp app, and a reviewed authentication template. That is reasonable for a company
+and a wall for everyone else.
+
+Telegram has none of those requirements. One bot token, no card, no review, and delivery is free.
+
+So this gateway treats both channels as first-class: the same two endpoints, the same error shape, one
+`channel` field apart. Start on Telegram today, add WhatsApp when your business paperwork clears — or
+run both and let your users choose.
+
+## Features
+
+- **Two-call API.** `POST /v1/otp/send` and `POST /v1/otp/verify`. JSON in, JSON out, no SDK required.
+- **WhatsApp Cloud API delivery** on your own Meta Business account, including the authentication
+  template with a copy-code button, signature-verified delivery callbacks, and sandbox-template support.
+- **Telegram bot delivery** with no business verification, no card and no per-message cost, including the
+  one-tap `request_contact` linking flow.
+- **Bring your own credentials.** Meta tokens and Telegram bot tokens are stored Fernet-encrypted, and
+  can be rotated from the dashboard without a redeploy.
+- **Safe by default.** SHA-256 hashed codes and API keys, single-use codes, a 5-minute TTL, a three-attempt
+  budget, per-phone throttling, per-key rate limiting and a monthly WhatsApp cap.
+- **Idempotent sends.** An `Idempotency-Key` header makes a retry safe even in the one case where the
+  message was delivered but the ledger write failed.
+- **Honest logs.** Tokens, keys, codes and signatures are never logged; phone numbers are masked.
+- **Self-hosted with one command.** Docker Compose, three containers, one SQLite file to back up, ports
+  bound to loopback by default.
+- **Real tests.** A pytest suite that runs with no network, no credentials and no external services.
+
+## Try it without installing anything
+
+There is no hosted demo, because there is no hosted anything. Instead the gateway's rules run in your
+browser: the real request and response bodies, the real status codes, and the real `Retry-After` headers
+for every failure path an integration has to handle.
+
+Send, verify, burn the attempt budget, exhaust the monthly cap, watch a Telegram link bounce — all
+locally, with nothing sent and no account. The source is [`frontend/src/features/try/`](frontend/src/features/try/),
+and it mirrors [`backend/docs/api.md`](backend/docs/api.md).
+
+## Quickstart
+
+```bash
+# 1. Get the code and configure it
+git clone https://github.com/Luckyyaduvanshiofficial/wotp.git
+cd wotp
+cp .env.example .env
+
+# 2. Start the stack (API, PocketBase, dashboard)
+docker compose up -d
+
+# 3. Create your operator account — there is no public signup
+docker compose exec api python scripts/create_admin.py you@example.com
+```
+
+Then open `http://localhost:3000`, sign in, create an API key, and point your backend at it:
+
+```bash
+curl -X POST "$WOTP_API/v1/otp/send" \
+  -H "X-Api-Key: $WOTP_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{"to": "919876543210", "channel": "telegram"}'
+```
+
+Full walkthrough: [docs/quickstart](frontend/src/app/docs/quickstart/page.tsx) ·
+Step-by-step deployment: [docs/self-hosting.md](docs/self-hosting.md).
+
+## Documentation
+
+Everything below ships in this repository, so it works offline and in a fresh clone.
+
+| Guide | What it answers |
+|---|---|
+| [docs/self-hosting.md](docs/self-hosting.md) | Docker Compose, TLS, backups that survive a restore drill, upgrades, retention and the production boot checks |
+| [docs/meta-setup.md](docs/meta-setup.md) | The Meta side in order: business verification, the authentication template, system-user tokens, the webhook |
+| [backend/docs/api.md](backend/docs/api.md) | The full integrator reference: every endpoint, field, error code and the retry decision for each |
+| [backend/README.md](backend/README.md) | Operating the gateway: configuration, cap semantics, the Telegram link flow, the WhatsApp webhook, running it |
+| [frontend/README.md](frontend/README.md) | The dashboard: environment variables, build-time inlining, deployment |
+| [SECURITY.md](SECURITY.md) | Threat model, hardening checklist and the credential rotation runbook |
+| [CONTRIBUTING.md](CONTRIBUTING.md) | How to run the checks and what a good change looks like |
+
+A running installation also serves this documentation as a website on its own domain: `/docs` for the
+guides, `/docs/api` for the reference, and `/try` for a browser playground that executes the gateway's
+rules without sending anything.
+
+
+## Who this is for, and who it is not for
+
+Being precise here saves a support thread.
+
+**A good fit if you**
+
+- are building an app that needs phone-number verification and can run one small container;
+- already have a WhatsApp Business account, or are happy to start on Telegram;
+- want the OTP audit trail, the API keys and the phone numbers in **your** database;
+- are shipping an internal tool, a side project, or a product in a market where WhatsApp is the default
+  messenger and you would rather not pay a per-message markup to a middleman.
+
+**A poor fit if you**
+
+- want someone else to run it for you. There is no hosted tier, and this project does not intend to have one.
+- need to send WhatsApp messages today without business verification. Telegram is the honest answer here;
+  no amount of software can change Meta's requirements.
+- need one verified WhatsApp sender shared across unrelated applications. That is a BSP's job, not a gateway's.
+- expect turnkey horizontal scale. The design target is one API worker on a small box, on purpose, and the
+  [concurrency notes](backend/README.md) say exactly where that limit is.
 
 ## The eleven questions
 
@@ -190,9 +326,9 @@ FastAPI owns every decision. PocketBase is storage plus a back office.
 Three services — the API, PocketBase, and the dashboard — plus a named volume for your data.
 
 ```bash
-# Clone the repository (use -b feat/self-host to test this self-hosted branch):
-git clone -b feat/self-host https://github.com/Luckyyaduvanshiofficial/wa-otp.git wa-otp
-cd wa-otp
+git clone https://github.com/Luckyyaduvanshiofficial/wotp.git
+cd wotp
+cd wotp
 cp .env.example .env
 ```
 
@@ -203,7 +339,7 @@ Open `.env` and set, at minimum:
 | `APP_ENV` | `production` on a real install — this turns on the fail-closed checks below |
 | `PB_SUPERUSER_EMAIL` / `PB_SUPERUSER_PASSWORD` | the PocketBase superuser; the entrypoint creates it on first boot |
 | `SECRET_KEY` | a long random string you generate |
-| `WAOTP_FERNET_KEY` | encrypts the Meta token at rest. Generate with the command in the file's header |
+| `WOTP_FERNET_KEY` | encrypts the Meta token at rest. Generate with the command in the file's header |
 | `APP_URL` | the public HTTPS URL of your API. Your webhook URL is derived from it |
 | `DASHBOARD_ORIGIN` | the exact origin of your dashboard — no trailing slash |
 | `META_*` | your Meta credentials, or leave blank for Telegram-only |
@@ -230,7 +366,7 @@ which parts of your installation are wired up.
 > `PB_BIND`, `API_BIND` and `WEB_BIND` override each bind address if you know what you are exposing.
 
 > [!WARNING]
-> **`APP_ENV=production` makes the API refuse to boot** if `SECRET_KEY`, `WAOTP_FERNET_KEY` or
+> **`APP_ENV=production` makes the API refuse to boot** if `SECRET_KEY`, `WOTP_FERNET_KEY` or
 > `PB_SUPERUSER_PASSWORD` is missing, or if mock delivery is on. That is deliberate: booting with a
 > missing signing key quietly weakens security, and a silent downgrade is worse than no boot at all.
 
@@ -259,7 +395,7 @@ cd frontend && bun install && cp .env.local.example .env.local && bun dev
 ```
 
 > [!TIP]
-> **`WAOTP_MOCK_DELIVERY=1` is the fastest way to see the whole thing work.**
+> **`WOTP_MOCK_DELIVERY=1` is the fastest way to see the whole thing work.**
 >
 > It fakes provider delivery while keeping **every database row real** — the full send → verify → quota
 > → throttle → audit flow runs with no Meta account, no Telegram bot, and no credentials of any kind.
@@ -525,7 +661,7 @@ cd frontend
 bun run typecheck && bun run lint && bun run build
 ```
 
-The backend suite runs against an in-memory PocketBase stand-in (`FakePB`) with `WAOTP_MOCK_DELIVERY=1`,
+The backend suite runs against an in-memory PocketBase stand-in (`FakePB`) with `WOTP_MOCK_DELIVERY=1`,
 so it needs no network and no Meta or Telegram credentials. It covers the failure paths deliberately —
 expired codes, exhausted attempts, replayed idempotency keys, throttled numbers, provider rejections and
 timeouts, malformed webhook payloads and bad signatures — not only the happy path.

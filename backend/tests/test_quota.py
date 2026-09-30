@@ -112,7 +112,7 @@ def test_failed_send_rows_are_not_billable(client, monkeypatch):
     add_developer(fake)
     fake.records["settings"]["set1"]["meta_phone_number_id"] = "PN123"
     fake.records["settings"]["set1"]["meta_token_enc"] = encrypt_secret("REALMETA")
-    monkeypatch.setenv("WAOTP_MOCK_DELIVERY", "0")
+    monkeypatch.setenv("WOTP_MOCK_DELIVERY", "0")
     get_settings.cache_clear()
 
     async def boom(*args, **kwargs):

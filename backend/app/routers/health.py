@@ -18,7 +18,7 @@ from fastapi.responses import JSONResponse
 from ..core.config import get_settings
 from ..core.errors import UpstreamUnavailable, error_responses
 from ..providers import build_whatsapp_provider
-from ..services.pocketbase import wa_collection
+from ..services.pocketbase import wotp_collection
 from ..services.settings import get_app_settings
 
 router = APIRouter(tags=["meta"])
@@ -38,7 +38,7 @@ async def ready(request: Request):
     cannot read its own data cannot serve an OTP request.
     """
     try:
-        await request.app.state.pb.list(wa_collection("settings"), per_page=1)
+        await request.app.state.pb.list(wotp_collection("settings"), per_page=1)
     except Exception:
         # Uptime monitors alert on the status code — a dead PocketBase must
         # never look healthy.
@@ -86,7 +86,7 @@ async def ready(request: Request):
             "verify_token_configured": bool(cfg.get("meta_verify_token")),
             "signature_check_enabled": bool(cfg.get("meta_app_secret")),
         },
-        "mock_delivery": env.waotp_mock_delivery,
+        "mock_delivery": env.wotp_mock_delivery,
     }
 
 
@@ -100,7 +100,7 @@ async def legacy_health(request: Request):
     probe.
     """
     try:
-        await request.app.state.pb.list(wa_collection("settings"), per_page=1)
+        await request.app.state.pb.list(wotp_collection("settings"), per_page=1)
     except Exception:
         return JSONResponse(
             status_code=503, content={"ok": False, "error": "upstream_unavailable"}
@@ -108,5 +108,5 @@ async def legacy_health(request: Request):
     return {
         "ok": True,
         "pb": True,
-        "mock_delivery": get_settings().waotp_mock_delivery,
+        "mock_delivery": get_settings().wotp_mock_delivery,
     }

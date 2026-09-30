@@ -17,7 +17,7 @@ from ..core.errors import (
 from ..dependencies import invalidate_api_key, require_pb_user
 from ..core.security import generate_api_key, sha256_hex
 from ..routers.otp import UsageOut  # same response shape as /v1/otp/usage
-from ..services.pocketbase import PocketBaseError, wa_collection
+from ..services.pocketbase import PocketBaseError, wotp_collection
 from ..services.quota import monthly_used, reset_utc_iso
 from ..services.settings import get_app_settings
 
@@ -66,21 +66,21 @@ async def _deactivate_owned_key(pb, user: dict, key_id: str) -> None:
     invalidation, so the key stops working immediately. Unknown AND foreign
     ids both 404 — existence of other developers' keys is never leaked."""
     try:
-        row = await pb.get_one(wa_collection("api_keys"), key_id)
+        row = await pb.get_one(wotp_collection("api_keys"), key_id)
     except PocketBaseError as exc:
         if exc.status_code == 404:
             raise KeyNotFound() from exc
         raise
     if row.get("owner") != user["id"]:
         raise KeyNotFound()
-    await pb.update(wa_collection("api_keys"), row["id"], {"active": False})
+    await pb.update(wotp_collection("api_keys"), row["id"], {"active": False})
     invalidate_api_key(row.get("key_hash") or "")
 
 
 @router.get("/keys", response_model=KeyListOut, responses=LIST_RESPONSES)
 async def list_keys(request: Request, user=Depends(require_pb_user)):
     res = await request.app.state.pb.list(
-        wa_collection("api_keys"), filter=f"owner='{user['id']}'", sort="-created", per_page=50
+        wotp_collection("api_keys"), filter=f"owner='{user['id']}'", sort="-created", per_page=50
     )
     keys = [
         {
@@ -99,7 +99,7 @@ async def list_keys(request: Request, user=Depends(require_pb_user)):
 async def issue_key(body: KeyIn, request: Request, user=Depends(require_pb_user)):
     pb = request.app.state.pb
     active = await pb.list(
-        wa_collection("api_keys"),
+        wotp_collection("api_keys"),
         filter=f"owner='{user['id']}' && active=true",
         per_page=1,
     )
@@ -108,7 +108,7 @@ async def issue_key(body: KeyIn, request: Request, user=Depends(require_pb_user)
 
     plaintext = generate_api_key()
     row = await pb.create(
-        wa_collection("api_keys"),
+        wotp_collection("api_keys"),
         {
             "owner": user["id"],
             "key_hash": sha256_hex(plaintext),
@@ -125,16 +125,16 @@ async def issue_key(body: KeyIn, request: Request, user=Depends(require_pb_user)
 async def regenerate_key(body: KeyIn, request: Request, user=Depends(require_pb_user)):
     pb = request.app.state.pb
     existing = await pb.list(
-        wa_collection("api_keys"), filter=f"owner='{user['id']}' && active=true", per_page=50
+        wotp_collection("api_keys"), filter=f"owner='{user['id']}' && active=true", per_page=50
     )
     for row in existing.get("items", []):
-        await pb.update(wa_collection("api_keys"), row["id"], {"active": False})
+        await pb.update(wotp_collection("api_keys"), row["id"], {"active": False})
         # old plaintext keys must stop working immediately, not after 60 s
         invalidate_api_key(row.get("key_hash") or "")
 
     plaintext = generate_api_key()
     row = await pb.create(
-        wa_collection("api_keys"),
+        wotp_collection("api_keys"),
         {
             "owner": user["id"],
             "key_hash": sha256_hex(plaintext),

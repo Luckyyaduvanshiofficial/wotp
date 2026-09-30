@@ -1,7 +1,7 @@
 import { NavGroup } from '@/types';
 
 /**
- * Sidebar + Cmd+K navigation for the WA OTP dashboard.
+ * Sidebar + Cmd+K navigation for the WOTP dashboard.
  */
 export const navGroups: NavGroup[] = [
   {

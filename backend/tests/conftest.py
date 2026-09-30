@@ -6,13 +6,13 @@ from cryptography.fernet import Fernet
 
 # Test env must be set before any app module is imported.
 os.environ.setdefault("PB_URL", "http://127.0.0.1:99999")
-os.environ.setdefault("PB_SUPERUSER_EMAIL", "test@waotp.local")
+os.environ.setdefault("PB_SUPERUSER_EMAIL", "test@wotp.local")
 os.environ.setdefault("PB_SUPERUSER_PASSWORD", "test-pass-123")
 # Empty prefix so the app talks to FakePB using logical (unprefixed) names.
-os.environ.setdefault("WAOTP_PB_COLLECTIONS_PREFIX", "")
-os.environ.setdefault("WAOTP_FERNET_KEY", Fernet.generate_key().decode())
+os.environ.setdefault("WOTP_PB_COLLECTIONS_PREFIX", "")
+os.environ.setdefault("WOTP_FERNET_KEY", Fernet.generate_key().decode())
 os.environ.setdefault("TELEGRAM_WEBHOOK_SECRET", "test-webhook-secret")
-os.environ.setdefault("WAOTP_MOCK_DELIVERY", "1")
+os.environ.setdefault("WOTP_MOCK_DELIVERY", "1")
 
 # Credentials are env-first in the app, and pydantic-settings reads
 # `backend/.env` whenever the suite runs from `backend/`. A real environment
@@ -38,7 +38,7 @@ from fastapi.testclient import TestClient  # noqa: E402
 
 from app.services.pocketbase import PocketBaseError  # noqa: E402
 
-TEST_KEY = "waotp_testkey0000000000000000000000000000"
+TEST_KEY = "wotp_testkey0000000000000000000000000000"
 KEY_HASH = __import__("hashlib").sha256(TEST_KEY.encode()).hexdigest()
 
 CLAUSE_RE = re.compile(r"^\s*(\w+)\s*(>=|<=|!=|>|<|=)\s*('?[^']*'?)\s*$")
@@ -109,7 +109,7 @@ class FakePB:
             "meta_template": "verification_code",
             "meta_template_lang": "en_US",
             "tg_bot_token": "TESTBOT:TOKEN",
-            "tg_bot_username": "waotp_test_bot",
+            "tg_bot_username": "wotp_test_bot",
             "monthly_send_quota": 500,
             "per_phone_hourly": 5,
             "code_ttl_seconds": 300,

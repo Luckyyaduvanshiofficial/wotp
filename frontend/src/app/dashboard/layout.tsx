@@ -10,7 +10,7 @@ import { cookies } from 'next/headers';
 
 export const metadata: Metadata = {
   title: 'Dashboard',
-  description: 'WA OTP — keys, usage and OTP testing',
+  description: 'WOTP — keys, usage and OTP testing',
   robots: {
     index: false,
     follow: false

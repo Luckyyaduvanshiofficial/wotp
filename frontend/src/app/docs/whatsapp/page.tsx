@@ -21,7 +21,7 @@ export const metadata: Metadata = {
     description:
       'Business verification, a clean number, the authentication template, a system-user token and a signed webhook.',
     url: `${SITE_URL}/docs/whatsapp`,
-    siteName: 'WA OTP',
+    siteName: 'WOTP',
     type: 'article'
   }
 };
@@ -32,7 +32,7 @@ const jsonLd = {
   headline: 'WhatsApp OTP setup with the Meta Cloud API',
   url: `${SITE_URL}/docs/whatsapp`,
   about: ['WhatsApp Cloud API', 'authentication template', 'business verification'],
-  isPartOf: { '@type': 'WebSite', name: 'WA OTP', url: SITE_URL }
+  isPartOf: { '@type': 'WebSite', name: 'WOTP', url: SITE_URL }
 };
 
 export default function WhatsAppDocsPage() {

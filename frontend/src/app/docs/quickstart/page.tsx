@@ -20,26 +20,26 @@ export const metadata: Metadata = {
     description:
       'Install, issue a key, then send and verify with curl, Node or Python. Plus the four errors worth handling on day one.',
     url: `${SITE_URL}/docs/quickstart`,
-    siteName: 'WA OTP',
+    siteName: 'WOTP',
     type: 'article'
   }
 };
 
-const SEND = `curl -X POST "$WAOTP_API/v1/otp/send" \\
-  -H "X-Api-Key: $WAOTP_KEY" \\
+const SEND = `curl -X POST "$WOTP_API/v1/otp/send" \\
+  -H "X-Api-Key: $WOTP_KEY" \\
   -H "Content-Type: application/json" \\
   -d '{"to": "919876543210"}'`;
 
-const VERIFY = `curl -X POST "$WAOTP_API/v1/otp/verify" \\
-  -H "X-Api-Key: $WAOTP_KEY" \\
+const VERIFY = `curl -X POST "$WOTP_API/v1/otp/verify" \\
+  -H "X-Api-Key: $WOTP_KEY" \\
   -H "Content-Type: application/json" \\
   -d '{"to": "919876543210", "code": "123456"}'`;
 
 const NODE = `// Node 18+. The key stays on the server: never ship it to a browser.
-const r = await fetch(process.env.WAOTP_API + '/v1/otp/send', {
+const r = await fetch(process.env.WOTP_API + '/v1/otp/send', {
   method: 'POST',
   headers: {
-    'X-Api-Key': process.env.WAOTP_KEY,
+    'X-Api-Key': process.env.WOTP_KEY,
     'Content-Type': 'application/json'
   },
   body: JSON.stringify({ to: '919876543210', channel: 'whatsapp' })
@@ -63,8 +63,8 @@ const PYTHON = `# Python 3.11+ with httpx
 import os, httpx
 
 r = httpx.post(
-    f"{os.environ['WAOTP_API']}/v1/otp/send",
-    headers={"X-Api-Key": os.environ["WAOTP_KEY"]},
+    f"{os.environ['WOTP_API']}/v1/otp/send",
+    headers={"X-Api-Key": os.environ["WOTP_KEY"]},
     json={"to": "919876543210", "channel": "whatsapp"},
     timeout=30,  # the gateway itself waits up to ~15s on the provider
 )

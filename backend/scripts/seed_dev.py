@@ -3,7 +3,7 @@
 PocketBase, and print the plaintext API key once.
 
 Usage:
-    .venv/bin/python scripts/seed_dev.py dev@waotp.local test1234
+    .venv/bin/python scripts/seed_dev.py dev@wotp.local test1234
 """
 
 import argparse
@@ -25,7 +25,7 @@ def main() -> int:
     args = parser.parse_args()
 
     from app.core.config import get_settings
-    from app.services.pocketbase import wa_collection
+    from app.services.pocketbase import wotp_collection
 
     cfg = get_settings()
     base = cfg.pb_url.rstrip("/")
@@ -34,7 +34,7 @@ def main() -> int:
     # custom one and allow generous timeouts.
     with httpx.Client(
         base_url=base, timeout=30,
-        headers={"User-Agent": "waotp-seed/0.1"}, follow_redirects=True,
+        headers={"User-Agent": "wotp-seed/0.1"}, follow_redirects=True,
     ) as http:
         r = http.post(
             "/api/collections/_superusers/auth-with-password",
@@ -49,7 +49,7 @@ def main() -> int:
         # create or reuse the developer user (in the app's own auth collection
         # — {prefix}users when targeting a shared PocketBase instance)
         r = http.post(
-            f"/api/collections/{wa_collection('users')}/records",
+            f"/api/collections/{wotp_collection('users')}/records",
             headers=headers,
             json={"email": args.email, "password": args.password,
                   "passwordConfirm": args.password, "status": "active"},
@@ -58,7 +58,7 @@ def main() -> int:
         if r.status_code == 400 and ("already exists" in err or "must be unique" in err
                                      or "validation_not_unique" in err):
             r = http.get(
-                f"/api/collections/{wa_collection('users')}/records",
+                f"/api/collections/{wotp_collection('users')}/records",
                 headers=headers,
                 params={"filter": f"email='{args.email}'"},
             )
@@ -73,9 +73,9 @@ def main() -> int:
 
         # issue an API key (plaintext printed once); the physical collection is
         # prefixed when the app targets a shared PocketBase instance
-        plaintext = "waotp_" + secrets.token_hex(20)
+        plaintext = "wotp_" + secrets.token_hex(20)
         r = http.post(
-            f"/api/collections/{wa_collection('api_keys')}/records",
+            f"/api/collections/{wotp_collection('api_keys')}/records",
             headers=headers,
             json={
                 "owner": user["id"],

@@ -10,7 +10,7 @@ export default function AuthLayout({ children }: { children: React.ReactNode }) 
         <div className='lm-auth__top'>
           <Link href='/' className='lm-auth__brand'>
             <Icons.logo className='size-4' aria-hidden='true' />
-            wa otp
+            wotp
           </Link>
           <ThemeToggle />
         </div>

@@ -21,7 +21,7 @@ export const metadata: Metadata = {
     description:
       'Is it really free, what Meta charges, what the licence is, and what this software deliberately does not do.',
     url: `${SITE_URL}/docs/faq`,
-    siteName: 'WA OTP',
+    siteName: 'WOTP',
     type: 'article'
   }
 };

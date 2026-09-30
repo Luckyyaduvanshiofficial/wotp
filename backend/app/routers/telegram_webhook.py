@@ -19,14 +19,14 @@ from fastapi.responses import JSONResponse
 from ..core.config import get_settings
 from ..core.security import mask_phone, normalize_phone, parse_link_token
 from ..services import telegram as telegram_service
-from ..services.pocketbase import PocketBaseError, wa_collection
+from ..services.pocketbase import PocketBaseError, wotp_collection
 from ..services.settings import get_app_settings
 
 router = APIRouter(tags=["telegram"])
-logger = logging.getLogger("waotp")
+logger = logging.getLogger("wotp")
 
 LINKED_TEXT = (
-    "✅ Number linked! Mini apps using WA OTP can now send you "
+    "✅ Number linked! Mini apps using WOTP can now send you "
     "verification codes right here on Telegram."
 )
 WRONG_CONTACT_TEXT = "⚠️ For security, please share your OWN number using the button below."
@@ -119,17 +119,17 @@ async def _handle_contact(request, cfg, bot_token, http, chat_id, sender, contac
 
     now = _utcnow_str()
     try:
-        existing = await pb.list(wa_collection("tg_links"), filter=f"phone='{phone}'", per_page=1)
+        existing = await pb.list(wotp_collection("tg_links"), filter=f"phone='{phone}'", per_page=1)
         items = existing.get("items") or []
         if items:
             await pb.update(
-                wa_collection("tg_links"),
+                wotp_collection("tg_links"),
                 items[0]["id"],
                 {"chat_id": chat_id, "tg_user_id": str(sender.get("id", "")), "linked_at": now},
             )
         else:
             await pb.create(
-                wa_collection("tg_links"),
+                wotp_collection("tg_links"),
                 {
                     "phone": phone,
                     "chat_id": chat_id,

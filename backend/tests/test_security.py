@@ -14,8 +14,8 @@ from app.core.security import (
 
 def test_api_key_format_and_hash():
     key = generate_api_key()
-    assert key.startswith("waotp_")
-    assert len(key) == len("waotp_") + 40
+    assert key.startswith("wotp_")
+    assert len(key) == len("wotp_") + 40
     assert sha256_hex(key) == sha256_hex(key)
     assert len(sha256_hex(key)) == 64
 
@@ -84,8 +84,8 @@ def test_fernet_roundtrip():
 
 
 def test_settings_env_loaded():
-    assert get_settings().waotp_mock_delivery is True
-    assert Fernet(get_settings().waotp_fernet_key.encode())
+    assert get_settings().wotp_mock_delivery is True
+    assert Fernet(get_settings().wotp_fernet_key.encode())
 
 
 # ---- phone numbers must not survive into logs ----
@@ -118,7 +118,7 @@ def test_failed_send_logs_do_not_contain_the_phone_number(client, monkeypatch, c
     add_developer(fake)
     fake.records["settings"]["set1"]["meta_phone_number_id"] = "PN123"
     fake.records["settings"]["set1"]["meta_token_enc"] = encrypt_secret("REALMETA")
-    monkeypatch.setenv("WAOTP_MOCK_DELIVERY", "0")
+    monkeypatch.setenv("WOTP_MOCK_DELIVERY", "0")
     get_settings.cache_clear()
 
     async def provider_rejects(*args, **kwargs):
@@ -135,7 +135,7 @@ def test_failed_send_logs_do_not_contain_the_phone_number(client, monkeypatch, c
     monkeypatch.setattr("app.providers.meta.MetaProvider.send_otp", provider_rejects)
     monkeypatch.setattr(FakePB, "create", create_fails)
 
-    with caplog.at_level(logging.CRITICAL, logger="waotp"):
+    with caplog.at_level(logging.CRITICAL, logger="wotp"):
         c.post(
             "/v1/otp/send",
             json={"to": "919876543210"},
@@ -160,7 +160,7 @@ def test_every_response_carries_a_request_id(client):
     bad = c.post(
         "/v1/otp/send",
         json={"to": "919876543210"},
-        headers={"X-Api-Key": "waotp_nope0000000000000000000000000000000000"},
+        headers={"X-Api-Key": "wotp_nope0000000000000000000000000000000000"},
     )
     assert bad.status_code == 401
     assert bad.headers["X-Request-Id"]

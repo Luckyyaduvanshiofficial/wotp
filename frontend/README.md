@@ -1,6 +1,6 @@
-# WA OTP — Frontend
+# WOTP — Frontend
 
-Dashboard + public site for **WA OTP**, a WhatsApp/Telegram OTP gateway for Indian
+Dashboard + public site for **WOTP**, a WhatsApp/Telegram OTP gateway for Indian
 mini-app developers. Developers sign up, create an API key, and send OTPs from their
 backend (500 free WhatsApp OTPs/month; Telegram is unlimited and free). The dashboard
 covers account, API keys, usage and an OTP tester.
@@ -34,7 +34,7 @@ Other scripts: `bun run build`, `bun run typecheck`, `bun run lint`, `bun run fo
 | Variable | Default | Purpose |
 |---|---|---|
 | `NEXT_PUBLIC_PB_URL` | `http://localhost:8090` | Self-hosted PocketBase (auth collection **`waotp_users`** — never `users`, that belongs to another app on a shared instance) |
-| `NEXT_PUBLIC_PB_COLLECTIONS_PREFIX` | `waotp_` | Collection namespace. **Must match `WAOTP_PB_COLLECTIONS_PREFIX` on the backend** — this prefix is what keeps the two projects on a shared instance apart |
+| `NEXT_PUBLIC_PB_COLLECTIONS_PREFIX` | `waotp_` | Collection namespace. **Must match `WOTP_PB_COLLECTIONS_PREFIX` on the backend** — this prefix is what keeps the two projects on a shared instance apart |
 | `NEXT_PUBLIC_API_URL` | `http://localhost:8000` | FastAPI backend base URL |
 | `NEXT_PUBLIC_APP_URL` | – | Canonical origin, used as the PocketBase password-reset return address |
 | `NEXT_PUBLIC_GITHUB_REPO` | – | `owner/repo`. When set, the landing nav shows the live star count; when unset, every GitHub surface renders nothing |
@@ -79,7 +79,7 @@ restart. No secrets are needed client-side; every value above is public.
   header, exactly as integrators would call them.
 - **Plaintext keys** are shown exactly once at creation (unmissable amber reveal card).
   The only other place they exist is an optional sessionStorage handoff
-  (`waotp:last-plaintext-key`) so the tester page can prefill the key for the rest of
+  (`wotp:last-plaintext-key`) so the tester page can prefill the key for the rest of
   the session. Nothing is persisted server-side or in localStorage.
 
 ## Error handling

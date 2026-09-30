@@ -8,7 +8,7 @@ from cryptography.fernet import Fernet, InvalidToken
 
 from .config import get_settings
 
-API_KEY_PREFIX = "waotp_"
+API_KEY_PREFIX = "wotp_"
 
 # Bounds for configurable values. OTP length is operator-configurable (see
 # OTP_LENGTH) but must stay within what the API accepts as a custom code
@@ -122,13 +122,13 @@ def normalize_phone(raw: str) -> str | None:
 
 
 def encrypt_secret(plaintext: str) -> str:
-    f = Fernet(get_settings().waotp_fernet_key.encode())
+    f = Fernet(get_settings().wotp_fernet_key.encode())
     return f.encrypt(plaintext.encode("utf-8")).decode("utf-8")
 
 
 def decrypt_secret(ciphertext: str) -> str | None:
     try:
-        f = Fernet(get_settings().waotp_fernet_key.encode())
+        f = Fernet(get_settings().wotp_fernet_key.encode())
         return f.decrypt(ciphertext.encode("utf-8")).decode("utf-8")
     except (InvalidToken, ValueError):
         return None
@@ -141,14 +141,14 @@ def _hmac_key() -> bytes:
     software shares one signing key that is published in the source, so any
     self-hoster could mint a link token valid on any other installation.
     """
-    key = get_settings().waotp_fernet_key
+    key = get_settings().wotp_fernet_key
     if not key:
         raise RuntimeError(
-            "WAOTP_FERNET_KEY is not set, so link tokens cannot be signed. "
+            "WOTP_FERNET_KEY is not set, so link tokens cannot be signed. "
             "Generate one with:\n"
             '  python -c "from cryptography.fernet import Fernet; '
             'print(Fernet.generate_key().decode())"\n'
-            "then set WAOTP_FERNET_KEY in backend/.env and restart."
+            "then set WOTP_FERNET_KEY in backend/.env and restart."
         )
     return key.encode("utf-8")
 

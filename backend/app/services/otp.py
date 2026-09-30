@@ -5,7 +5,7 @@ or after the final wrong attempt / expiry)."""
 from datetime import datetime, timedelta
 
 from ..core.security import sha256_hex
-from .pocketbase import wa_collection
+from .pocketbase import wotp_collection
 from .quota import pb_date
 
 
@@ -13,14 +13,14 @@ async def expire_previous_otps(pb, owner_id: str, phone: str, now: datetime) -> 
     """Mark any prior OTP codes for this phone as expired so only the newest is active."""
     try:
         res = await pb.list(
-            wa_collection("otp_codes"),
+            wotp_collection("otp_codes"),
             filter=f"owner='{owner_id}' && phone='{phone}' && expires>'{pb_date(now)}'",
             per_page=50,
         )
         for item in res.get("items") or []:
             try:
                 await pb.update(
-                    wa_collection("otp_codes"),
+                    wotp_collection("otp_codes"),
                     item["id"],
                     {"expires": (now - timedelta(seconds=1)).strftime("%Y-%m-%d %H:%M:%S")},
                 )
@@ -42,7 +42,7 @@ async def create_otp(
     await expire_previous_otps(pb, owner_id, phone, now)
     expires = now + timedelta(seconds=ttl_seconds)
     return await pb.create(
-        wa_collection("otp_codes"),
+        wotp_collection("otp_codes"),
         {
             "owner": owner_id,
             "api_key": api_key_id,
@@ -56,7 +56,7 @@ async def create_otp(
 
 async def _latest_active(pb, owner_id: str, phone: str, now: datetime) -> dict | None:
     res = await pb.list(
-        wa_collection("otp_codes"),
+        wotp_collection("otp_codes"),
         filter=(
             f"owner='{owner_id}' && phone='{phone}' && expires>'{pb_date(now)}'"
         ),
@@ -86,18 +86,18 @@ async def verify_otp(
         return {"result": "not_found"}
 
     if int(row.get("attempts") or 0) >= max_attempts:
-        await pb.delete(wa_collection("otp_codes"), row["id"])
+        await pb.delete(wotp_collection("otp_codes"), row["id"])
         return {"result": "not_found"}
 
     if hmac_compare(code, row.get("code_hash") or ""):
-        await pb.delete(wa_collection("otp_codes"), row["id"])
+        await pb.delete(wotp_collection("otp_codes"), row["id"])
         return {"result": "verified"}
 
     attempts = int(row.get("attempts") or 0) + 1
     if attempts >= max_attempts:
-        await pb.delete(wa_collection("otp_codes"), row["id"])
+        await pb.delete(wotp_collection("otp_codes"), row["id"])
         return {"result": "too_many_attempts", "attempts_left": 0}
-    await pb.update(wa_collection("otp_codes"), row["id"], {"attempts": attempts})
+    await pb.update(wotp_collection("otp_codes"), row["id"], {"attempts": attempts})
     return {"result": "wrong", "attempts_left": max_attempts - attempts}
 
 

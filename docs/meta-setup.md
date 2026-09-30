@@ -20,7 +20,7 @@ touching Meta, set up a bot and skip to the end of this page.
 ## What you are building
 
 ```
-your app ──▶ WA OTP API ──▶ Meta Cloud API ──▶ your user's WhatsApp
+your app ──▶ WOTP API ──▶ Meta Cloud API ──▶ your user's WhatsApp
                   ▲
                   └── status callbacks (sent / delivered / read / failed)
 ```

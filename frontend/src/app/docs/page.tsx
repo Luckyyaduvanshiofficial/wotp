@@ -24,7 +24,7 @@ export const metadata: Metadata = {
     description:
       'Quickstart, WhatsApp template setup, Docker deployment and the full API reference.',
     url: `${SITE_URL}/docs`,
-    siteName: 'WA OTP',
+    siteName: 'WOTP',
     type: 'website'
   }
 };
@@ -41,7 +41,7 @@ const jsonLd = {
     'Install, configure and integrate a self-hosted OTP gateway using your own Meta WhatsApp Cloud API and Telegram bot credentials.',
   url: `${SITE_URL}/docs`,
   about: ['One-time password', 'WhatsApp Cloud API', 'Telegram Bot API', 'FastAPI'],
-  isPartOf: { '@type': 'WebSite', name: 'WA OTP', url: SITE_URL }
+  isPartOf: { '@type': 'WebSite', name: 'WOTP', url: SITE_URL }
 };
 
 export default function DocsHubPage() {

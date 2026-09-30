@@ -31,7 +31,9 @@
  * gives both the same permissive rule.
  */
 migrate((app) => {
-  const PREFIX = ($os.getenv("WAOTP_PB_COLLECTIONS_PREFIX") || "waotp_").trim()
+  const PREFIX = ($os.getenv("WOTP_PB_COLLECTIONS_PREFIX") ||
+    $os.getenv("WAOTP_PB_COLLECTIONS_PREFIX") ||
+    "waotp_").trim()
   const physical = (logical) => PREFIX + logical
 
   const GUARDED =
@@ -58,7 +60,9 @@ migrate((app) => {
     }
   }
 }, (app) => {
-  const PREFIX = ($os.getenv("WAOTP_PB_COLLECTIONS_PREFIX") || "waotp_").trim()
+  const PREFIX = ($os.getenv("WOTP_PB_COLLECTIONS_PREFIX") ||
+    $os.getenv("WAOTP_PB_COLLECTIONS_PREFIX") ||
+    "waotp_").trim()
   const physical = (logical) => PREFIX + logical
 
   const GUARDED =

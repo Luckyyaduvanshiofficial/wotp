@@ -1,6 +1,6 @@
 # CLAUDE.md — frontend
 
-The WA OTP dashboard and public site. Next.js 16 (App Router, Turbopack), React 19,
+The WOTP dashboard and public site. Next.js 16 (App Router, Turbopack), React 19,
 TypeScript strict, Tailwind v4, shadcn/ui on Base UI, TanStack Query + Form, PocketBase SDK.
 
 **`../PRD.md` is the canonical spec** for the product, and **`../CLAUDE.md`** covers the
@@ -24,7 +24,7 @@ Two backends, and they are not interchangeable:
 
 - **Auth stores nothing locally.** The PocketBase SDK keeps the session; `src/lib/pb.ts` is
   the single place the collection name is resolved. `NEXT_PUBLIC_PB_COLLECTIONS_PREFIX`
-  must match `WAOTP_PB_COLLECTIONS_PREFIX` on the backend — see `src/lib/pb.ts`.
+  must match `WOTP_PB_COLLECTIONS_PREFIX` on the backend — see `src/lib/pb.ts`.
 - **PocketBase is only ever called for identity.** Every OTP operation goes through FastAPI
   with the PocketBase user token as a bearer. Do not add PocketBase reads for OTP data.
 - **The backend must set `DASHBOARD_ORIGIN`** to this app's origin or every browser call

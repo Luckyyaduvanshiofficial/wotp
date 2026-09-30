@@ -1,4 +1,4 @@
-# Self-hosting WA OTP
+# Self-hosting WOTP
 
 Docker Compose, TLS, backups, upgrades and the production configuration this
 software expects. If you only read one section, read
@@ -24,8 +24,8 @@ machine until you deliberately expose it.
 ## First run
 
 ```bash
-git clone -b feat/self-host https://github.com/Luckyyaduvanshiiofficial/wa-otp.git wa-otp
-cd wa-otp
+git clone https://github.com/Luckyyaduvanshiofficial/wotp.git
+cd wotp
 cp .env.example .env
 ```
 
@@ -36,7 +36,7 @@ Open `.env` and set at minimum:
 | `APP_ENV` | `production` for a real install. This turns on the fail-closed checks below. |
 | `PB_SUPERUSER_EMAIL` / `PB_SUPERUSER_PASSWORD` | The PocketBase superuser. The entrypoint creates it on first boot. |
 | `SECRET_KEY` | A long random string: `python -c "import secrets; print(secrets.token_urlsafe(48))"` |
-| `WAOTP_FERNET_KEY` | Encrypts provider tokens at rest. See the command in the file's header. |
+| `WOTP_FERNET_KEY` | Encrypts provider tokens at rest. See the command in the file's header. |
 | `APP_URL` | The public HTTPS URL of your API. Your webhook URL is derived from it. |
 | `DASHBOARD_ORIGIN` | The exact origin of your dashboard. No trailing slash. |
 | `META_*` | Your Meta credentials, or leave blank for a Telegram-only install. |
@@ -57,8 +57,8 @@ Sign in at `http://localhost:3000`, create an API key for your app, and follow
 
 On purpose, and it will not warn-and-continue. It refuses when:
 
-- `SECRET_KEY`, `WAOTP_FERNET_KEY` or `PB_SUPERUSER_PASSWORD` is missing
-- `WAOTP_MOCK_DELIVERY` is on (that mode fakes delivery)
+- `SECRET_KEY`, `WOTP_FERNET_KEY` or `PB_SUPERUSER_PASSWORD` is missing
+- `WOTP_MOCK_DELIVERY` is on (that mode fakes delivery)
 - WhatsApp credentials are set but `META_APP_SECRET` is empty
 
 The last one is not pedantry. Without the app secret, inbound webhook calls
@@ -139,15 +139,15 @@ Two options, in increasing order of effort:
 **Nightly copy.** Simple, and enough for a small install:
 
 ```bash
-# /etc/cron.daily/waotp-backup
+# /etc/cron.daily/wotp-backup
 #!/bin/sh
 set -eu
 STAMP=$(date +%F)
 docker run --rm \
-  -v wa-otp_pb_data:/data:ro \
-  -v /var/backups/waotp:/backup \
+  -v wotp_pb_data:/data:ro \
+  -v /var/backups/wotp:/backup \
   alpine tar czf "/backup/pb_data-$STAMP.tgz" -C /data .
-find /var/backups/waotp -name 'pb_data-*.tgz' -mtime +30 -delete
+find /var/backups/wotp -name 'pb_data-*.tgz' -mtime +30 -delete
 ```
 
 **Litestream** streams the SQLite WAL continuously to S3-compatible storage, so
@@ -159,13 +159,13 @@ backup is a hypothesis. To verify:
 
 ```bash
 docker compose down
-docker run --rm -v wa-otp_pb_data:/data -v /var/backups/waotp:/backup \
+docker run --rm -v wotp_pb_data:/data -v /var/backups/wotp:/backup \
   alpine sh -c 'rm -rf /data/* && tar xzf /backup/pb_data-YYYY-MM-DD.tgz -C /data'
 docker compose up -d
 curl -fsS http://127.0.0.1:8000/health/ready
 ```
 
-Rotating `WAOTP_FERNET_KEY` makes previously stored provider tokens
+Rotating `WOTP_FERNET_KEY` makes previously stored provider tokens
 undecryptable — back that key up with the data, or be ready to re-enter the
 Meta token and the Telegram bot token afterwards.
 
@@ -225,17 +225,17 @@ migrations alongside it.
 ### systemd units
 
 ```ini
-# /etc/systemd/system/waotp-api.service
+# /etc/systemd/system/wotp-api.service
 [Unit]
-Description=WA OTP API
-After=network.target waotp-pocketbase.service
-Requires=waotp-pocketbase.service
+Description=WOTP API
+After=network.target wotp-pocketbase.service
+Requires=wotp-pocketbase.service
 
 [Service]
-User=waotp
-WorkingDirectory=/opt/wa-otp/backend
-EnvironmentFile=/opt/wa-otp/backend/.env
-ExecStart=/opt/wa-otp/backend/.venv/bin/uvicorn app.main:app \
+User=wotp
+WorkingDirectory=/opt/wotp/backend
+EnvironmentFile=/opt/wotp/backend/.env
+ExecStart=/opt/wotp/backend/.venv/bin/uvicorn app.main:app \
   --host 127.0.0.1 --port 8000 --workers 1
 Restart=on-failure
 RestartSec=5
@@ -245,16 +245,16 @@ WantedBy=multi-user.target
 ```
 
 ```ini
-# /etc/systemd/system/waotp-pocketbase.service
+# /etc/systemd/system/wotp-pocketbase.service
 [Unit]
-Description=WA OTP PocketBase
+Description=WOTP PocketBase
 After=network.target
 
 [Service]
-User=waotp
-WorkingDirectory=/opt/wa-otp/backend/pocketbase
-EnvironmentFile=/opt/wa-otp/backend/.env
-ExecStart=/opt/wa-otp/backend/pocketbase/pocketbase serve --http=127.0.0.1:8090
+User=wotp
+WorkingDirectory=/opt/wotp/backend/pocketbase
+EnvironmentFile=/opt/wotp/backend/.env
+ExecStart=/opt/wotp/backend/pocketbase/pocketbase serve --http=127.0.0.1:8090
 Restart=on-failure
 RestartSec=5
 

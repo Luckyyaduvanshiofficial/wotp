@@ -6,14 +6,14 @@ import { GITHUB_URL } from '@/features/landing/components/github-star';
 import { SITE_URL } from '@/lib/site';
 
 export const metadata: Metadata = {
-  title: 'Changelog — WA OTP Gateway Releases & Updates',
+  title: 'Changelog — WOTP Gateway Releases & Updates',
   description:
-    'Track updates, improvements, and new feature releases for WA OTP Gateway. Open source, self-hostable, and built with FastAPI Python.',
+    'Track updates, improvements, and new feature releases for WOTP Gateway. Open source, self-hostable, and built with FastAPI Python.',
   openGraph: {
-    title: 'Changelog — WA OTP Gateway Releases & Updates',
-    description: 'Track updates, improvements, and releases for WA OTP Gateway.',
+    title: 'Changelog — WOTP Gateway Releases & Updates',
+    description: 'Track updates, improvements, and releases for WOTP Gateway.',
     url: `${SITE_URL}/changelog`,
-    siteName: 'WA OTP',
+    siteName: 'WOTP',
     type: 'website'
   }
 };
@@ -75,7 +75,7 @@ export default function ChangelogPage() {
             <em>changelog</em> & product updates.
           </h1>
           <p className='lm-lede'>
-            Every feature, improvement, and architectural refinement made to WA OTP Gateway. Built
+            Every feature, improvement, and architectural refinement made to WOTP Gateway. Built
             with transparency in the open source ecosystem.
           </p>
           <div className='lm-actions'>

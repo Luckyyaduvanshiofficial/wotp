@@ -1,4 +1,4 @@
-# wa otp — agent briefing
+# wotp — agent briefing
 
 you are integrating an otp gateway. this file is the whole contract. read it
 once, then write the integration. do not browse the site for more context —
@@ -8,16 +8,16 @@ everything you need is here, and anything not in this file does not exist.
 
 two values, neither of which is in this file:
 
-    WAOTP_API   gateway base url, no trailing slash
-    WAOTP_KEY   an api key, prefixed waotp_
+    WOTP_API   gateway base url, no trailing slash
+    WOTP_KEY   an api key, prefixed wotp_
 
 ask the user for both. never invent a host. never hardcode a key — put it in an
 environment variable or a secret manager.
 
 ## 2 · the whole integration
 
-    POST $WAOTP_API/v1/otp/send
-      X-Api-Key: $WAOTP_KEY
+    POST $WOTP_API/v1/otp/send
+      X-Api-Key: $WOTP_KEY
       Content-Type: application/json
       { "to": "919876543210", "channel": "whatsapp" }
 
@@ -30,8 +30,8 @@ environment variable or a secret manager.
             "expires_in": 300, "used": 42, "limit": 500,
             "reset_utc": "2026-10-01T00:00:00Z" }
 
-    POST $WAOTP_API/v1/otp/verify
-      X-Api-Key: $WAOTP_KEY
+    POST $WOTP_API/v1/otp/verify
+      X-Api-Key: $WOTP_KEY
       Content-Type: application/json
       { "to": "919876543210", "code": "123456" }
 
@@ -47,7 +47,7 @@ read with the installation's default country code (india `+91` unless the
 operator changed it), and a leading trunk `0` is dropped. normalized form is
 digits + country code.
 
-    GET $WAOTP_API/v1/otp/usage   ->   { "used", "limit", "reset_utc" }
+    GET $WOTP_API/v1/otp/usage   ->   { "used", "limit", "reset_utc" }
 
 ## 3 · limits — read them from responses, never hardcode
 
@@ -127,7 +127,7 @@ named above.
 
 ## 7 · testing without credentials
 
-if the operator runs the gateway with `WAOTP_MOCK_DELIVERY=1`, delivery is faked
+if the operator runs the gateway with `WOTP_MOCK_DELIVERY=1`, delivery is faked
 while every response, error, quota and throttle behaves identically — and codes
 are really stored. send a custom code and verify it back:
 

@@ -1,7 +1,7 @@
 import PocketBase from 'pocketbase';
 
 /**
- * PocketBase singleton for WA OTP.
+ * PocketBase singleton for WOTP.
  *
  * `NEXT_PUBLIC_PB_URL` must point at *your own* PocketBase instance. There is
  * deliberately no fallback: a missing value is a configuration error, and
@@ -11,7 +11,7 @@ import PocketBase from 'pocketbase';
  * The auth collection is `${prefix}users` — for this deployment `waotp_users`.
  * The prefix exists so one PocketBase instance can host more than one project
  * without collection-name collisions; it is env-driven and must match
- * `WAOTP_PB_COLLECTIONS_PREFIX` in `backend/.env`. If you run a dedicated
+ * `WOTP_PB_COLLECTIONS_PREFIX` in `backend/.env`. If you run a dedicated
  * PocketBase for this app alone, the default prefix works fine as-is.
  *
  * The SDK persists the auth token in localStorage by default (LocalAuthStore),
@@ -42,7 +42,7 @@ export const PB_COLLECTIONS_PREFIX = configuredPrefix || 'waotp_';
 
 export const PB_USERS_COLLECTION = `${PB_COLLECTIONS_PREFIX}users`;
 
-export interface WaotpUser {
+export interface WotpUser {
   id: string;
   email: string;
   name?: string;
@@ -56,7 +56,7 @@ export interface WaotpUser {
 export const pb = new PocketBase(PB_URL);
 
 export function pbUsers() {
-  return pb.collection<WaotpUser>(PB_USERS_COLLECTION);
+  return pb.collection<WotpUser>(PB_USERS_COLLECTION);
 }
 
 /**

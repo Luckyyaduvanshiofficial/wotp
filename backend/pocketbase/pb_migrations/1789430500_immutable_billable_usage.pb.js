@@ -34,7 +34,9 @@
  * writes rows where billable still differs from what it should be.
  */
 migrate((app) => {
-  const PREFIX = ($os.getenv("WAOTP_PB_COLLECTIONS_PREFIX") || "waotp_").trim()
+  const PREFIX = ($os.getenv("WOTP_PB_COLLECTIONS_PREFIX") ||
+    $os.getenv("WAOTP_PB_COLLECTIONS_PREFIX") ||
+    "waotp_").trim()
   const physical = (logical) => PREFIX + logical
 
   let messages
@@ -74,7 +76,9 @@ migrate((app) => {
     if (rows.length < PAGE) break
   }
 }, (app) => {
-  const PREFIX = ($os.getenv("WAOTP_PB_COLLECTIONS_PREFIX") || "waotp_").trim()
+  const PREFIX = ($os.getenv("WOTP_PB_COLLECTIONS_PREFIX") ||
+    $os.getenv("WAOTP_PB_COLLECTIONS_PREFIX") ||
+    "waotp_").trim()
   const physical = (logical) => PREFIX + logical
 
   try {

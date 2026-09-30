@@ -1,4 +1,4 @@
-# WA OTP — Backend
+# WOTP — Backend
 
 The FastAPI hot path plus the PocketBase control plane, for a **self-hosted**
 WhatsApp/Telegram OTP gateway. You run this for your own apps, with your own
@@ -44,7 +44,7 @@ cd ..
 .venv/bin/python scripts/create_admin.py you@example.com
 ```
 
-With `WAOTP_MOCK_DELIVERY=1` the full send → verify → quota → throttle → audit
+With `WOTP_MOCK_DELIVERY=1` the full send → verify → quota → throttle → audit
 flow runs without any Meta or Telegram credentials: delivery is faked, but every
 database row is real. It must be `0` or absent in production, and
 `APP_ENV=production` refuses to boot if it is not.
@@ -61,9 +61,9 @@ UI without a redeploy. `backend/.env.example` documents the whole surface.
 Two hard rules:
 
 - **In `APP_ENV=production` the app refuses to start** if `SECRET_KEY`,
-  `WAOTP_FERNET_KEY` or `PB_SUPERUSER_PASSWORD` is missing, or if mock delivery
+  `WOTP_FERNET_KEY` or `PB_SUPERUSER_PASSWORD` is missing, or if mock delivery
   is on. A silent security downgrade is worse than no boot.
-- **`WAOTP_FERNET_KEY` must stay stable.** It encrypts the Meta token at rest
+- **`WOTP_FERNET_KEY` must stay stable.** It encrypts the Meta token at rest
   and signs Telegram link tokens. Changing it makes previously stored ciphertext
   unreadable and invalidates outstanding link tokens.
 
@@ -239,7 +239,7 @@ Full walkthrough for obtaining these credentials: [../docs/meta-setup.md](../doc
 3. Set `META_VERIFY_TOKEN` to a random string you choose, register
    `{APP_URL}/webhooks/whatsapp` in the Meta app dashboard, and subscribe to the
    `messages` field. Set `META_APP_SECRET` so inbound calls are signature-checked.
-4. Set `WAOTP_MOCK_DELIVERY=0` and `APP_ENV=production`.
+4. Set `WOTP_MOCK_DELIVERY=0` and `APP_ENV=production`.
 
 Confirm the result with `curl https://api.example.com/health/ready` — it tells
 you exactly which piece is still missing, by variable name.
@@ -254,7 +254,7 @@ code changes; env values are only fallbacks.
 
 ## Sharing one PocketBase instance
 
-All collections can be namespaced with a prefix (`WAOTP_PB_COLLECTIONS_PREFIX`,
+All collections can be namespaced with a prefix (`WOTP_PB_COLLECTIONS_PREFIX`,
 default `waotp_`) so one PocketBase can host several projects. With a prefix set,
 this app also gets its **own auth collection** (`waotp_users`) — accounts, tokens
 and data are then fully separate from other apps on the instance, and their
@@ -310,7 +310,7 @@ Four things about that Blueprint are deliberate:
 - **`healthCheckPath: /health`**, which is safe now that liveness is
   dependency-free. `/health/ready` does query PocketBase, so using it as a
   deploy gate would fail deploys whenever the database was briefly busy.
-- **`WAOTP_MOCK_DELIVERY=0`.** Any other value fakes delivery while still writing
+- **`WOTP_MOCK_DELIVERY=0`.** Any other value fakes delivery while still writing
   every DB row — a silent outage in production.
 - **`DASHBOARD_ORIGIN` is required,** not optional. It is a single-origin CORS
   allowlist; a missing or mismatched value (trailing slash, wrong host) presents

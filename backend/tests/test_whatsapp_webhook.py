@@ -436,10 +436,10 @@ def test_production_requires_app_secret_when_whatsapp_is_configured():
 
     base = dict(
         app_env="production",
-        waotp_fernet_key="k" * 44,
+        wotp_fernet_key="k" * 44,
         secret_key="s" * 32,
         pb_superuser_password="a-strong-password",
-        waotp_mock_delivery=False,
+        wotp_mock_delivery=False,
     )
 
     # no WhatsApp credentials: nothing to verify, boots fine

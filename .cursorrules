@@ -1,12 +1,12 @@
-# Cursor Rules for WA OTP
+# Cursor Rules for WOTP
 
-# 🚨 CRITICAL RULE: NEVER MERGE feat/self-host INTO main
-# The `main` branch is actively deployed and running live in production.
-# NEVER execute `git merge feat/self-host` or merge PR #1.
-# All self-hosting development belongs strictly on branch `feat/self-host`.
+# Branch model: a single trunk. See AGENTS.md for the authoritative policy.
+# `main` is the canonical project and may be deployed, so confirm with the
+# owner before pushing. Work happens on short-lived feature branches that merge
+# back into `main`. The old `main` / `feat/self-host` split is retired.
 
 1. Always check the active git branch before editing or committing (`git branch --show-current`).
-2. If working on self-hosting features or documentation, ensure you are on `feat/self-host`.
-3. Never commit secrets, tokens, or `.env` files.
-4. Ensure all backend tests (`./.venv/bin/pytest`) and frontend checks (`npm run typecheck`) pass before committing.
-5. Refer to `AGENTS.md` for the complete branch policy and architectural guidelines.
+2. Never commit secrets, tokens, or `.env` files. Every `.env` is untracked; the examples hold placeholders only.
+3. Never run a real send. Tests use mock delivery and must not contact Meta, Telegram, or any external service.
+4. Ensure all backend tests (`backend/.venv/bin/pytest -q`) and frontend checks (`bun run typecheck`, `bun run lint`, `bun run format:check`) pass before committing.
+5. Refer to `AGENTS.md` for the complete policy, dev commands and safety checklist.

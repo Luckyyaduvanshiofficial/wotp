@@ -1,17 +1,17 @@
 /// <reference path="../pb_data/types.d.ts" />
 /**
- * WA OTP control-plane schema (PRD §5).
+ * WOTP control-plane schema (PRD §5).
  *
  * ISOLATION — read this before editing.
  * This PocketBase instance may be shared with other projects, so every
  * collection this migration touches lives under a prefix. The prefix is read
- * from WAOTP_PB_COLLECTIONS_PREFIX and defaults to "waotp_" — the same default
+ * from WOTP_PB_COLLECTIONS_PREFIX and defaults to "waotp_" — the same default
  * as `pb_collections_prefix` in `app/core/config.py` and
  * PB_COLLECTIONS_PREFIX in `frontend/src/lib/pb.ts`. All three must agree, or
  * the app will address collections that do not exist.
  *
  * With a prefix set (the default, and the only safe mode on a shared
- * instance) wa-otp gets its OWN auth collection, `{prefix}users`, and the
+ * instance) wotp gets its OWN auth collection, `{prefix}users`, and the
  * stock `users` collection — which belongs to whatever other project lives on
  * this instance — is NEVER read or modified. With the prefix explicitly set to
  * empty (dedicated instance), `status` is added to the stock `users`
@@ -31,14 +31,16 @@
  * fail to apply.
  */
 migrate((app) => {
-  const PREFIX = ($os.getenv("WAOTP_PB_COLLECTIONS_PREFIX") || "waotp_").trim()
+  const PREFIX = ($os.getenv("WOTP_PB_COLLECTIONS_PREFIX") ||
+    $os.getenv("WAOTP_PB_COLLECTIONS_PREFIX") ||
+    "waotp_").trim()
   const physical = (logical) => PREFIX + logical
 
   const CREATED = { name: "created", type: "autodate", onCreate: true }
   const UPDATED = { name: "updated", type: "autodate", onCreate: true, onUpdate: true }
 
   // ---- operator auth collection --------------------------------------------
-  // Prefixed: wa-otp's own login pool, separate from every other app's users.
+  // Prefixed: wotp's own login pool, separate from every other app's users.
   // Unprefixed (dedicated instance): extend the stock `users` collection.
   //
   // This installation is operator-owned: there is no public signup, so
@@ -279,10 +281,12 @@ migrate((app) => {
   seed.set("otp_length", 6)
   app.save(seed)
 }, (app) => {
-  const PREFIX = ($os.getenv("WAOTP_PB_COLLECTIONS_PREFIX") || "waotp_").trim()
+  const PREFIX = ($os.getenv("WOTP_PB_COLLECTIONS_PREFIX") ||
+    $os.getenv("WAOTP_PB_COLLECTIONS_PREFIX") ||
+    "waotp_").trim()
   const physical = (logical) => PREFIX + logical
 
-  // down: drop wa-otp's own collections, prefixed like the up-migration
+  // down: drop wotp's own collections, prefixed like the up-migration
   for (const logical of ["settings", "tg_links",
                          "messages", "otp_codes", "api_keys"]) {
     try {
@@ -293,7 +297,7 @@ migrate((app) => {
   }
 
   if (PREFIX) {
-    // wa-otp's own auth collection goes with them
+    // wotp's own auth collection goes with them
     try {
       app.delete(app.findCollectionByNameOrId(physical("users")))
     } catch (e) {

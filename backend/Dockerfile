@@ -1,7 +1,7 @@
-# WA OTP — FastAPI hot path.
+# WOTP — FastAPI hot path.
 #
 # Build from the repository root's compose file, or directly:
-#   docker build -t waotp-api ./backend
+#   docker build -t wotp-api ./backend
 #
 # Configuration is entirely environment-driven, so this image is the same for
 # every operator: no credentials, no hostnames and no author-owned defaults are
@@ -34,8 +34,8 @@ COPY scripts ./scripts
 # own user owns, the container will not be able to write to it as-is. The
 # compose file uses named volumes for exactly that reason. A bind-mount needs
 # `chown -R 10001:10001 ./pb_data` first.
-RUN useradd --create-home --uid 10001 waotp
-USER waotp
+RUN useradd --create-home --uid 10001 wotp
+USER wotp
 
 EXPOSE 8000
 

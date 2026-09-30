@@ -32,7 +32,7 @@ This applies to all project spaces — issues, pull requests, commit messages, c
 
 ## Reporting
 
-Report a problem privately to the maintainer through GitHub. If the report concerns a specific thread, use the **Report content** option on the relevant comment or issue; for anything else, open a private [security advisory](https://github.com/Luckyyaduvanshiofficial/wa-otp/security/advisories/new) and mark it as a conduct report — it is the only private channel this repository has, and it works fine for this.
+Report a problem privately to the maintainer through GitHub. If the report concerns a specific thread, use the **Report content** option on the relevant comment or issue; for anything else, open a private [security advisory](https://github.com/Luckyyaduvanshiofficial/wotp/security/advisories/new) and mark it as a conduct report — it is the only private channel this repository has, and it works fine for this.
 
 Reports are read by the maintainer alone. The person reported will not be told who reported them.
 
@@ -49,4 +49,4 @@ Maintainers may remove, edit, or reject any contribution that violates this docu
 
 ## Attribution
 
-This document is written for WA OTP specifically. It is not the Contributor Covenant and does not claim to be.
+This document is written for WOTP specifically. It is not the Contributor Covenant and does not claim to be.

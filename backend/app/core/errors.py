@@ -14,7 +14,7 @@ from fastapi.responses import JSONResponse
 
 from ..services.pocketbase import PocketBaseError
 
-logger = logging.getLogger("waotp")
+logger = logging.getLogger("wotp")
 
 
 class ApiError(Exception):

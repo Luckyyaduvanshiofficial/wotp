@@ -14,7 +14,7 @@ def test_issue_key_returns_plaintext_once(client):
     r = c.post("/v1/keys", json={"label": "prod"}, headers=USER_TOKEN)
     assert r.status_code == 201
     body = r.json()
-    assert body["api_key"].startswith("waotp_")
+    assert body["api_key"].startswith("wotp_")
     assert body["last4"] == body["api_key"][-4:]
     assert body["label"] == "prod"
 

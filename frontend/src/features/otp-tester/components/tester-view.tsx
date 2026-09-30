@@ -233,7 +233,7 @@ export function TesterView() {
   }
 
   // Generate dynamic curl command snippet
-  const effectiveKey = apiKey.trim() || '$WAOTP_KEY';
+  const effectiveKey = apiKey.trim() || '$WOTP_KEY';
   const effectivePhone = cleanAndNormalizePhone(phone) || '919876543210';
   const effectiveVerifyPhone = cleanAndNormalizePhone(verifyPhone) || '919876543210';
   const effectiveCode = verifyCode.trim() || '123456';
@@ -319,7 +319,7 @@ export function TesterView() {
               <Input
                 id='tester-key'
                 type={showApiKey ? 'text' : 'password'}
-                placeholder='waotp_… (paste your key or click Generate)'
+                placeholder='wotp_… (paste your key or click Generate)'
                 value={apiKey}
                 onChange={(e) => handleApiKeyChange(e.target.value)}
                 autoComplete='off'

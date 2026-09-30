@@ -24,7 +24,7 @@ export const metadata: Metadata = {
     description:
       'Every endpoint, field, error code and the retry decision for each. Plus a self-contained briefing you can paste into an agent.',
     url: `${SITE_URL}/docs/api`,
-    siteName: 'WA OTP',
+    siteName: 'WOTP',
     type: 'article'
   }
 };
@@ -36,10 +36,10 @@ const BRIEFING_PATH = '/agent-briefing.md';
 const jsonLd = {
   '@context': 'https://schema.org',
   '@type': 'TechArticle',
-  headline: 'WA OTP gateway API reference',
+  headline: 'WOTP gateway API reference',
   url: `${SITE_URL}/docs/api`,
   about: ['REST API', 'one-time password', 'WhatsApp Cloud API', 'Telegram Bot API'],
-  isPartOf: { '@type': 'WebSite', name: 'WA OTP', url: SITE_URL }
+  isPartOf: { '@type': 'WebSite', name: 'WOTP', url: SITE_URL }
 };
 
 export default function ApiReferencePage() {

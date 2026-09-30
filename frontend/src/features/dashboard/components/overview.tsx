@@ -260,12 +260,12 @@ function QuickStartCard() {
     {
       title: '2. Send an OTP',
       body: 'Call send with your secret key in the X-Api-Key header:',
-      code: `curl -X POST "${API_URL}/v1/otp/send" \\\n  -H "X-Api-Key: $WAOTP_KEY" \\\n  -H "Content-Type: application/json" \\\n  -d '{"to": "919876543210", "channel": "whatsapp"}'`
+      code: `curl -X POST "${API_URL}/v1/otp/send" \\\n  -H "X-Api-Key: $WOTP_KEY" \\\n  -H "Content-Type: application/json" \\\n  -d '{"to": "919876543210", "channel": "whatsapp"}'`
     },
     {
       title: '3. Verify the OTP',
       body: 'Validate the code entered by the user. Codes burn upon verification:',
-      code: `curl -X POST "${API_URL}/v1/otp/verify" \\\n  -H "X-Api-Key: $WAOTP_KEY" \\\n  -H "Content-Type: application/json" \\\n  -d '{"to": "919876543210", "code": "123456"}'`
+      code: `curl -X POST "${API_URL}/v1/otp/verify" \\\n  -H "X-Api-Key: $WOTP_KEY" \\\n  -H "Content-Type: application/json" \\\n  -d '{"to": "919876543210", "code": "123456"}'`
     }
   ];
 
@@ -273,12 +273,12 @@ function QuickStartCard() {
     {
       title: '1. Dispatch OTP (Node / TypeScript)',
       body: 'Send an OTP to recipient using native fetch:',
-      code: `const res = await fetch('${API_URL}/v1/otp/send', {\n  method: 'POST',\n  headers: {\n    'X-Api-Key': process.env.WAOTP_KEY,\n    'Content-Type': 'application/json'\n  },\n  body: JSON.stringify({\n    to: '919876543210',\n    channel: 'whatsapp' // or 'telegram'\n  })\n});\nconst data = await res.json();\nconsole.log(data); // { ok: true, expires_in: 300 }`
+      code: `const res = await fetch('${API_URL}/v1/otp/send', {\n  method: 'POST',\n  headers: {\n    'X-Api-Key': process.env.WOTP_KEY,\n    'Content-Type': 'application/json'\n  },\n  body: JSON.stringify({\n    to: '919876543210',\n    channel: 'whatsapp' // or 'telegram'\n  })\n});\nconst data = await res.json();\nconsole.log(data); // { ok: true, expires_in: 300 }`
     },
     {
       title: '2. Verify Code (Node / TypeScript)',
       body: 'Verify what the user typed against the gateway:',
-      code: `const res = await fetch('${API_URL}/v1/otp/verify', {\n  method: 'POST',\n  headers: {\n    'X-Api-Key': process.env.WAOTP_KEY,\n    'Content-Type': 'application/json'\n  },\n  body: JSON.stringify({\n    to: '919876543210',\n    code: userInputCode\n  })\n});\nconst result = await res.json();\nif (result.verified) {\n  console.log('User verified successfully!');\n}`
+      code: `const res = await fetch('${API_URL}/v1/otp/verify', {\n  method: 'POST',\n  headers: {\n    'X-Api-Key': process.env.WOTP_KEY,\n    'Content-Type': 'application/json'\n  },\n  body: JSON.stringify({\n    to: '919876543210',\n    code: userInputCode\n  })\n});\nconst result = await res.json();\nif (result.verified) {\n  console.log('User verified successfully!');\n}`
     }
   ];
 
@@ -286,12 +286,12 @@ function QuickStartCard() {
     {
       title: '1. Dispatch OTP (Python)',
       body: 'Send an OTP to recipient using requests:',
-      code: `import requests\n\nresp = requests.post(\n    "${API_URL}/v1/otp/send",\n    headers={"X-Api-Key": os.environ["WAOTP_KEY"]},\n    json={"to": "919876543210", "channel": "whatsapp"}\n)\ndata = resp.json()\nprint(data)  # {"ok": True, "expires_in": 300}`
+      code: `import requests\n\nresp = requests.post(\n    "${API_URL}/v1/otp/send",\n    headers={"X-Api-Key": os.environ["WOTP_KEY"]},\n    json={"to": "919876543210", "channel": "whatsapp"}\n)\ndata = resp.json()\nprint(data)  # {"ok": True, "expires_in": 300}`
     },
     {
       title: '2. Verify Code (Python)',
       body: 'Verify received OTP code:',
-      code: `import requests\n\nresp = requests.post(\n    "${API_URL}/v1/otp/verify",\n    headers={"X-Api-Key": os.environ["WAOTP_KEY"]},\n    json={"to": "919876543210", "code": user_code}\n)\nresult = resp.json()\nif result.get("verified"):\n    print("User authenticated successfully!")`
+      code: `import requests\n\nresp = requests.post(\n    "${API_URL}/v1/otp/verify",\n    headers={"X-Api-Key": os.environ["WOTP_KEY"]},\n    json={"to": "919876543210", "code": user_code}\n)\nresult = resp.json()\nif result.get("verified"):\n    print("User authenticated successfully!")`
     }
   ];
 
@@ -416,7 +416,7 @@ function RecentKeysCard() {
                   <p className='text-xs sm:text-sm font-medium truncate'>
                     {k.label || 'Unnamed key'}
                   </p>
-                  <p className='text-muted-foreground font-mono text-[11px]'>waotp_••••{k.last4}</p>
+                  <p className='text-muted-foreground font-mono text-[11px]'>wotp_••••{k.last4}</p>
                 </div>
                 <div className='flex items-center gap-2 shrink-0'>
                   <Badge variant={k.active ? 'secondary' : 'outline'} className='text-[10px]'>

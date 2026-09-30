@@ -32,15 +32,15 @@ const PHONE_DEFAULT = '9876543210';
 const SEND_CURL = (to: string, channel: Channel, code: string) => {
   const payload: Record<string, string> = { to, channel };
   if (code) payload.code = code;
-  return `curl -X POST "$WAOTP_API/v1/otp/send" \\
-  -H "X-Api-Key: $WAOTP_KEY" \\
+  return `curl -X POST "$WOTP_API/v1/otp/send" \\
+  -H "X-Api-Key: $WOTP_KEY" \\
   -H "Content-Type: application/json" \\
   -d '${JSON.stringify(payload)}'`;
 };
 
 const VERIFY_CURL = (to: string, code: string) =>
-  `curl -X POST "$WAOTP_API/v1/otp/verify" \\
-  -H "X-Api-Key: $WAOTP_KEY" \\
+  `curl -X POST "$WOTP_API/v1/otp/verify" \\
+  -H "X-Api-Key: $WOTP_KEY" \\
   -H "Content-Type: application/json" \\
   -d '${JSON.stringify({ to, code })}'`;
 
@@ -282,7 +282,7 @@ export function TryPlayground() {
                   what arrives on {channel} · demo only
                 </span>
                 <p className='lm-try__delivered-body'>
-                  {'<#'} WA OTP {'>'} your verification code is{' '}
+                  {'<#'} WOTP {'>'} your verification code is{' '}
                   <b className='lm-try__code-inline'>{active.code}</b>. it expires in{' '}
                   {Math.floor(remaining / 60)}:{String(remaining % 60).padStart(2, '0')}.
                 </p>

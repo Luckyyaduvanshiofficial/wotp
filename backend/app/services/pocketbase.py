@@ -1,6 +1,6 @@
 """Minimal async PocketBase REST client used as the superuser/system account.
 
-All waotp collections are admin-only, so every read/write here goes through
+All wotp collections are admin-only, so every read/write here goes through
 superuser auth. Tokens are fetched lazily and refreshed once on 401.
 """
 
@@ -14,7 +14,7 @@ class PocketBaseError(Exception):
         super().__init__(f"PocketBase {status_code}: {message[:300]}")
 
 
-def wa_collection(name: str) -> str:
+def wotp_collection(name: str) -> str:
     """Logical collection name -> physical (prefixed) name on the PB instance."""
     from ..core.config import get_settings
     return f"{get_settings().pb_collections_prefix}{name}"
@@ -145,7 +145,7 @@ class PBClient:
     # -- user token validation (dashboard auth) ------------------------------
 
     async def auth_refresh(self, user_token: str) -> dict:
-        """Validate a wa-otp developer token; returns {"token": ..., "record": ...}.
+        """Validate a wotp developer token; returns {"token": ..., "record": ...}.
 
         Targets the app's own auth collection ({prefix}users when running on a
         shared instance), NOT other apps' user pools. Raises
@@ -153,6 +153,6 @@ class PBClient:
         """
         return await self._request(
             "POST",
-            f"/api/collections/{wa_collection('users')}/auth-refresh",
+            f"/api/collections/{wotp_collection('users')}/auth-refresh",
             token=user_token,
         )

@@ -3,7 +3,7 @@
   "configVersion": 1,
   "workspaces": {
     "": {
-      "name": "wa-otp-dashboard",
+      "name": "wotp-dashboard",
       "dependencies": {
         "@base-ui/react": "^1.6.0",
         "@sentry/nextjs": "^10.45.0",

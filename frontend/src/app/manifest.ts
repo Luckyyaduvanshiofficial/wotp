@@ -2,8 +2,8 @@ import type { MetadataRoute } from 'next';
 
 export default function manifest(): MetadataRoute.Manifest {
   return {
-    name: 'WA OTP — Open Source WhatsApp & Telegram OTP Gateway',
-    short_name: 'WA OTP',
+    name: 'WOTP — Open Source WhatsApp & Telegram OTP Gateway',
+    short_name: 'WOTP',
     description:
       'Lightning-fast open-source WhatsApp & Telegram OTP gateway built with FastAPI Python.',
     start_url: '/',

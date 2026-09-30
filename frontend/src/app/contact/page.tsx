@@ -6,14 +6,14 @@ import { Icons } from '@/components/icons';
 import { SITE_URL } from '@/lib/site';
 
 export const metadata: Metadata = {
-  title: 'Contact & Support — WA OTP Gateway',
+  title: 'Contact & Support — WOTP Gateway',
   description:
-    'Get in touch with the creator of WA OTP Gateway, Lucky Yaduvanshi, or explore CodaiPro developer tools and open-source discussions.',
+    'Get in touch with the creator of WOTP Gateway, Lucky Yaduvanshi, or explore CodaiPro developer tools and open-source discussions.',
   openGraph: {
-    title: 'Contact & Support — WA OTP Gateway',
+    title: 'Contact & Support — WOTP Gateway',
     description: 'Get in touch with Lucky Yaduvanshi or explore CodaiPro developer tools.',
     url: `${SITE_URL}/contact`,
-    siteName: 'WA OTP',
+    siteName: 'WOTP',
     type: 'website'
   }
 };
@@ -32,7 +32,7 @@ export default function ContactPage() {
             <em>contact</em> & support.
           </h1>
           <p className='lm-lede'>
-            Have questions about integrating WA OTP, sponsorship inquiries, or suggestions for
+            Have questions about integrating WOTP, sponsorship inquiries, or suggestions for
             CodaiPro developer tools? We&apos;re here to help.
           </p>
         </div>
@@ -58,7 +58,7 @@ export default function ContactPage() {
                   Lucky Yaduvanshi
                 </h3>
                 <p className='text-xs text-[var(--color-ink-muted)] leading-relaxed'>
-                  Software engineer, systems architect, and creator of WA OTP and the CodaiPro
+                  Software engineer, systems architect, and creator of WOTP and the CodaiPro
                   developer tools suite.
                 </p>
               </div>

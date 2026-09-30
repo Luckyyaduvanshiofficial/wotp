@@ -46,7 +46,7 @@ build:
 > not after.
 
 > [!WARNING]
-> **`NEXT_PUBLIC_PB_COLLECTIONS_PREFIX` must match `WAOTP_PB_COLLECTIONS_PREFIX`
+> **`NEXT_PUBLIC_PB_COLLECTIONS_PREFIX` must match `WOTP_PB_COLLECTIONS_PREFIX`
 > on the backend.** Never leave it empty against a shared PocketBase instance —
 > an unprefixed build addresses the stock `users` and `api_keys` collections,
 > which belong to another project.
@@ -66,14 +66,14 @@ docker build \
   --build-arg NEXT_PUBLIC_PB_COLLECTIONS_PREFIX=waotp_ \
   --build-arg NEXT_PUBLIC_API_URL=https://api.example.com \
   --build-arg NEXT_PUBLIC_APP_URL=https://app.example.com \
-  -t wa-otp-dashboard ./frontend
+  -t wotp-dashboard ./frontend
 ```
 
 ```bash
 docker run -d -p 3000:3000 \
   --restart unless-stopped \
-  --name wa-otp-dashboard \
-  wa-otp-dashboard
+  --name wotp-dashboard \
+  wotp-dashboard
 ```
 
 `NEXT_PUBLIC_SENTRY_DISABLED` defaults to `true` in the image, so a stock
@@ -108,7 +108,7 @@ does not build.
 | Variable | Value | Notes |
 |---|---|---|
 | `NEXT_PUBLIC_PB_URL` | `https://pb.your-domain` | your own PocketBase, publicly reachable |
-| `NEXT_PUBLIC_PB_COLLECTIONS_PREFIX` | `waotp_` | must equal `WAOTP_PB_COLLECTIONS_PREFIX` |
+| `NEXT_PUBLIC_PB_COLLECTIONS_PREFIX` | `waotp_` | must equal `WOTP_PB_COLLECTIONS_PREFIX` |
 | `NEXT_PUBLIC_API_URL` | `https://api.your-domain` | your own API, no trailing slash |
 | `NEXT_PUBLIC_APP_URL` | `https://app.your-domain` | used as the PocketBase password-reset return address, so it must be the origin your operators actually reach |
 | `NEXT_PUBLIC_GITHUB_REPO` | `owner/repo` | optional; unset hides the GitHub chrome rather than inventing a number |

@@ -3,18 +3,19 @@
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
 > [!CAUTION]
-> **🚨 ABSOLUTE BRANCH RULE: NEVER MERGE `feat/self-host` INTO `main`**
-> - **`main`** is actively deployed and running live in production on the internet.
-> - **`feat/self-host`** is the self-hosted open-source version (tracked in Draft PR #1).
-> - Never execute `git merge feat/self-host` while on `main` or merge PR #1.
-> - All self-hosting work must be committed ONLY to branch `feat/self-host`.
-> - Always check `git branch --show-current` before making changes. See `AGENTS.md` for details.
+> **`main` is the single trunk, and it may be deployed.**
+> - The old `main` / `feat/self-host` split is **retired**. Every feature, fix and doc change lands on
+>   `main`, via short-lived feature branches.
+> - If a deployment is attached to `main`, every push ships to real users, and the PocketBase migrations
+>   run against a real database on start. Confirm with the owner before pushing.
+> - Always check `git branch --show-current` before making changes. See `AGENTS.md` for the full policy.
 
 ## What this is
 
-WA OTP — a WhatsApp/Telegram OTP delivery gateway for Indian mini-app developers.
-Two-call REST API (`/v1/otp/send`, `/v1/otp/verify`); 500 free WhatsApp OTPs/developer/month;
-Telegram channel is unlimited and free.
+WOTP — an open-source, self-hosted, bring-your-own-credentials OTP gateway. You run it on your own
+Meta WhatsApp Cloud API account or your own Telegram bot. Two-call REST API (`/v1/otp/send`,
+`/v1/otp/verify`); a configurable monthly WhatsApp cap (default 500 for the installation) that
+Telegram is never metered against.
 
 **`PRD.md` is the canonical spec** (architecture, data model, API semantics, limits, milestones).
 Deeper docs: `backend/README.md` (API + ops), `backend/docs/api.md` (integrator reference),
@@ -37,12 +38,12 @@ Next.js dashboard ──▶ PocketBase (login/keys/usage) + FastAPI (tester, key
 ```
 
 - **PocketBase is never exposed to customers.** FastAPI owns all OTP send/verify/quota/throttle/provider logic; it talks to PocketBase as a superuser via REST. PocketBase is pure data + back office (its admin UI is the operator's dashboard).
-- All wa-otp data lives in PocketBase collections (`api_keys`, `otp_codes`, `messages`, `wallet_txns`, `rate_cards`, `tg_links`, single `settings` row), all admin-only. With `WAOTP_PB_COLLECTIONS_PREFIX=waotp_` (default) collections are prefixed and the app uses its own `waotp_users` auth collection — this is how one PocketBase instance is shared across projects.
+- All WOTP data lives in PocketBase collections (`api_keys`, `otp_codes`, `messages`, `tg_links`, single `settings` row), all admin-only. The hosted-era `wallet_txns` and `rate_cards` collections are removed by the self-host migration. With `WOTP_PB_COLLECTIONS_PREFIX=waotp_` (default) collections are prefixed and the app uses its own `waotp_users` auth collection — this is how one PocketBase instance is shared across projects.
 - **Limits are data, not code**: the single `settings` row holds quota (500/mo WhatsApp-only), throttle (5/phone/hour, both channels), TTL (300 s), attempts (3), per-key rate limit, max keys. Editable from the PB admin UI; env values are fallbacks only.
-- Quota semantics that trip people up: the monthly quota counts **WhatsApp-delivered sends only**; Telegram is unlimited. Failed sends never consume quota (logged with `status=failed`). Per-phone throttle and per-key rate limit apply to **both** channels.
+- Quota semantics that trip people up: the monthly quota counts **WhatsApp-delivered sends only**; Telegram is unlimited. Failed sends never consume quota, and delivered sends stay counted even if a later status callback reports a failure: usage is recorded once, on the immutable `billable` flag written at send time. That is deliberate — a counter that drops when messages succeed is not a spend limit. Per-phone throttle and per-key rate limit apply to **both** channels.
 - Concurrency: a single uvicorn worker holds a per-OWNER asyncio lock around sends (the cap and the throttle are owner-scoped, and one owner may hold five keys) and per-(owner, phone) locks around verifies — don't add a second worker without rethinking this.
-- `POST /v1/otp/send` accepts an optional `Idempotency-Key` header: successful responses are replay-deduped per (api_key, header value) for the code's TTL (process-local store in `app/dependencies.py`, same single-worker assumption as the rate limiter; only 200s are cached, replays carry `Idempotency-Replayed: true`).
-- `WAOTP_MOCK_DELIVERY=1` fakes provider delivery while keeping every DB row real — the whole send→verify→quota→ledger flow runs with no Meta/Telegram credentials. Must be `0`/absent in production.
+- `POST /v1/otp/send` accepts an optional `Idempotency-Key` header: responses are replay-deduped per (api_key, header value) for the code's TTL (process-local store in `app/dependencies.py`, same single-worker assumption as the rate limiter). Successes are cached, and so is the one failure where the provider accepted the message but the ledger write afterwards failed — replaying that error is what stops a retry from double-sending. Ordinary failures stay retryable. Replays carry `Idempotency-Replayed: true`.
+- `WOTP_MOCK_DELIVERY=1` fakes provider delivery while keeping every DB row real — the whole send→verify→quota→ledger flow runs with no Meta/Telegram credentials. Must be `0`/absent in production.
 - Secrets (Meta token, Telegram bot token) are Fernet-encrypted **in the PB `settings` row**, not env; the app reads config from there so going live needs no redeploy. API keys and OTP codes are stored sha256-hashed only.
 
 ## Commands
@@ -56,7 +57,7 @@ Next.js dashboard ──▶ PocketBase (login/keys/usage) + FastAPI (tester, key
 cd pocketbase && ./pocketbase superuser upsert you@local devpass123 && ./pocketbase serve --http=127.0.0.1:8090
 
 .venv/bin/uvicorn app.main:app --port 8000      # API, docs at /docs
-.venv/bin/python scripts/seed_dev.py dev@waotp.local devpass123   # dev developer + API key
+.venv/bin/python scripts/seed_dev.py dev@wotp.local devpass123   # dev developer + API key
 
 .venv/bin/pytest -q                             # full suite, no network (FakePB + mock delivery)
 .venv/bin/pytest tests/test_quota.py -q         # one file

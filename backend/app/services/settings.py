@@ -10,7 +10,7 @@ import time
 
 from ..core.config import get_settings
 from ..core.security import decrypt_secret
-from .pocketbase import wa_collection
+from .pocketbase import wotp_collection
 
 _TTL_SECONDS = 60.0
 _cache: dict = {"data": None, "at": 0.0}
@@ -28,7 +28,7 @@ async def get_app_settings(pb) -> dict:
     env = get_settings()
     row: dict = {}
     try:
-        res = await pb.list(wa_collection("settings"), per_page=1)
+        res = await pb.list(wotp_collection("settings"), per_page=1)
         if res.get("items"):
             row = res["items"][0]
     except Exception:

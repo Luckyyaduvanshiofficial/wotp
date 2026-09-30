@@ -20,7 +20,7 @@ export const metadata: Metadata = {
     description:
       'Ten minutes to a running gateway: compose, the production boot checks, TLS, backups and upgrades.',
     url: `${SITE_URL}/docs/self-hosting`,
-    siteName: 'WA OTP',
+    siteName: 'WOTP',
     type: 'article'
   }
 };
@@ -31,7 +31,7 @@ const jsonLd = {
   headline: 'Self-hosting the OTP gateway with Docker Compose',
   url: `${SITE_URL}/docs/self-hosting`,
   about: ['Docker Compose', 'self-hosting', 'reverse proxy', 'backups'],
-  isPartOf: { '@type': 'WebSite', name: 'WA OTP', url: SITE_URL }
+  isPartOf: { '@type': 'WebSite', name: 'WOTP', url: SITE_URL }
 };
 
 export default function SelfHostingDocsPage() {
@@ -79,8 +79,8 @@ export default function SelfHostingDocsPage() {
       </p>
 
       <h2 id='run'>First run</h2>
-      <pre className='lm-code'>{`git clone https://github.com/Luckyyaduvanshiofficial/wa-otp.git
-cd wa-otp
+      <pre className='lm-code'>{`git clone https://github.com/Luckyyaduvanshiofficial/wotp.git
+cd wotp
 cp .env.example .env
 
 docker compose up -d
@@ -117,11 +117,11 @@ docker compose exec api python scripts/create_admin.py you@example.com`}</pre>
       </p>
       <ul>
         <li>
-          <code>SECRET_KEY</code>, <code>WAOTP_FERNET_KEY</code> or{' '}
+          <code>SECRET_KEY</code>, <code>WOTP_FERNET_KEY</code> or{' '}
           <code>PB_SUPERUSER_PASSWORD</code> is missing;
         </li>
         <li>
-          <code>WAOTP_MOCK_DELIVERY</code> is on, because that mode fakes delivery, and an install
+          <code>WOTP_MOCK_DELIVERY</code> is on, because that mode fakes delivery, and an install
           that believes it is live while faking delivery is the most dangerous state this software
           can be in;
         </li>
@@ -172,23 +172,23 @@ TRUST_PROXY_HEADERS=1`}</pre>
         linked Telegram accounts, your settings and the encrypted provider tokens. Losing it means
         losing every key and every audit row.
       </p>
-      <pre className='lm-code'>{`# /etc/cron.daily/waotp-backup
+      <pre className='lm-code'>{`# /etc/cron.daily/wotp-backup
 #!/bin/sh
 set -eu
 STAMP=$(date +%F)
 docker run --rm \\
-  -v wa-otp_pb_data:/data:ro \\
-  -v /var/backups/waotp:/backup \\
+  -v wotp_pb_data:/data:ro \\
+  -v /var/backups/wotp:/backup \\
   alpine tar czf "/backup/pb_data-$STAMP.tgz" -C /data .
-find /var/backups/waotp -name 'pb_data-*.tgz' -mtime +30 -delete`}</pre>
+find /var/backups/wotp -name 'pb_data-*.tgz' -mtime +30 -delete`}</pre>
       <p>
         <strong>Do a restore drill before you rely on it.</strong> An untested backup is a
         hypothesis. The full restore procedure is in the repository, and it takes about a minute.
       </p>
       <p>
-        Rotating <code>WAOTP_FERNET_KEY</code> makes previously stored provider tokens
-        undecryptable. Back that key up with the data, or be ready to re-enter the Meta token and
-        the bot token afterwards.
+        Rotating <code>WOTP_FERNET_KEY</code> makes previously stored provider tokens undecryptable.
+        Back that key up with the data, or be ready to re-enter the Meta token and the bot token
+        afterwards.
       </p>
 
       <h2 id='upgrades'>Upgrades</h2>

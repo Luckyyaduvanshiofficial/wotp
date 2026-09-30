@@ -1,12 +1,12 @@
-# Contributing to WA OTP
+# Contributing to WOTP
 
-Thanks for being here. WA OTP exists because phone verification was needlessly hard for people shipping small apps, and it stays useful only if it keeps being easy to run. Bug reports, docs fixes, and code are all welcome.
+Thanks for being here. WOTP exists because phone verification was needlessly hard for people shipping small apps, and it stays useful only if it keeps being easy to run. Bug reports, docs fixes, and code are all welcome.
 
 ## Ways to contribute
 
 | | Where |
 |---|---|
-| **Bug reports** | [Open an issue](https://github.com/Luckyyaduvanshiofficial/wa-otp/issues). Include what you ran, what you expected, and what happened. |
+| **Bug reports** | [Open an issue](https://github.com/Luckyyaduvanshiofficial/wotp/issues). Include what you ran, what you expected, and what happened. |
 | **Feature ideas** | Open an issue first — see below. |
 | **Documentation** | PRs welcome. Docs that lie are worse than no docs, so accuracy beats volume. |
 | **Security issues** | **Never** the public tracker. See [`SECURITY.md`](SECURITY.md). |
@@ -47,11 +47,11 @@ Then the API:
 
 ```bash
 .venv/bin/uvicorn app.main:app --port 8000   # OpenAPI docs: http://127.0.0.1:8000/docs
-.venv/bin/python scripts/seed_dev.py dev@waotp.local devpass123
+.venv/bin/python scripts/seed_dev.py dev@wotp.local devpass123
 ```
 
 > [!TIP]
-> `WAOTP_MOCK_DELIVERY=1` (the default in `.env.example`) fakes provider delivery while keeping every database row real. The full send → verify → quota → throttle → ledger flow runs with **no Meta or Telegram credentials**. You will almost never need real ones.
+> `WOTP_MOCK_DELIVERY=1` (the default in `.env.example`) fakes provider delivery while keeping every database row real. The full send → verify → quota → throttle → ledger flow runs with **no Meta or Telegram credentials**. You will almost never need real ones.
 
 ### Frontend
 
@@ -124,13 +124,13 @@ Keep it lightweight — this is a small project and a heavy process would only s
 
 ## Licensing of contributions
 
-WA OTP is licensed under **AGPL-3.0-or-later**. By submitting a contribution, you agree that it is licensed under the same terms.
+WOTP is licensed under **AGPL-3.0-or-later**. By submitting a contribution, you agree that it is licensed under the same terms.
 
 There is **no CLA** and you do not need to sign anything.
 
 The license choice is deliberate, so you know the ground rules before you invest time:
 
-- **Unmodified self-hosting carries no obligation.** Anyone can run WA OTP privately or commercially without publishing a thing. That is the point.
+- **Unmodified self-hosting carries no obligation.** Anyone can run WOTP privately or commercially without publishing a thing. That is the point.
 - **AGPL §13** applies only if someone modifies it *and* runs the modified version as a network service for others — then those users must be offered the modified source. That clause is what keeps a closed-source hosting business from being built out of this codebase and your contributions.
 
 ## Code of conduct

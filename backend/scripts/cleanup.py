@@ -89,17 +89,17 @@ async def prune_collection(pb, collection: str, date_field: str, cutoff: datetim
 
 async def prune(pb, *, otp_days: int, message_days: int, dry_run: bool,
                 now: datetime | None = None) -> dict:
-    from app.services.pocketbase import wa_collection
+    from app.services.pocketbase import wotp_collection
 
     now = now or datetime.now(timezone.utc)
     expired_cutoff = otp_cutoff(now, otp_days)
     audit_cutoff = message_cutoff(now, message_days)
 
     otp_removed = await prune_collection(
-        pb, wa_collection("otp_codes"), "expires", expired_cutoff, dry_run=dry_run
+        pb, wotp_collection("otp_codes"), "expires", expired_cutoff, dry_run=dry_run
     )
     messages_removed = await prune_collection(
-        pb, wa_collection("messages"), "created", audit_cutoff, dry_run=dry_run
+        pb, wotp_collection("messages"), "created", audit_cutoff, dry_run=dry_run
     )
     return {
         "otp_codes": otp_removed,

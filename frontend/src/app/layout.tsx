@@ -25,8 +25,8 @@ const META_THEME_COLORS = {
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
   title: {
-    default: 'WA OTP — Open Source WhatsApp & Telegram OTP Gateway (FastAPI Python)',
-    template: '%s | WA OTP'
+    default: 'WOTP — Open Source WhatsApp & Telegram OTP Gateway (FastAPI Python)',
+    template: '%s | WOTP'
   },
   description:
     'Lightning-fast open-source WhatsApp & Telegram OTP gateway built with FastAPI Python. Free unmetered Telegram bot delivery, Meta WhatsApp Cloud API integration, and self-hostable.',
@@ -60,22 +60,22 @@ export const metadata: Metadata = {
     type: 'website',
     locale: 'en_US',
     url: SITE_URL,
-    title: 'WA OTP — Open Source WhatsApp & Telegram OTP Gateway (FastAPI Python)',
+    title: 'WOTP — Open Source WhatsApp & Telegram OTP Gateway (FastAPI Python)',
     description:
       'Lightning-fast open-source WhatsApp & Telegram OTP gateway built with FastAPI Python. Free unmetered Telegram bot delivery, Meta WhatsApp Cloud API integration, and self-hostable.',
-    siteName: 'WA OTP',
+    siteName: 'WOTP',
     images: [
       {
         url: '/og-image.png',
         width: 1200,
         height: 630,
-        alt: 'WA OTP — Open Source WhatsApp & Telegram OTP Gateway (FastAPI Python)'
+        alt: 'WOTP — Open Source WhatsApp & Telegram OTP Gateway (FastAPI Python)'
       }
     ]
   },
   twitter: {
     card: 'summary_large_image',
-    title: 'WA OTP — Open Source WhatsApp & Telegram OTP Gateway (FastAPI Python)',
+    title: 'WOTP — Open Source WhatsApp & Telegram OTP Gateway (FastAPI Python)',
     description:
       'Lightning-fast open-source WhatsApp & Telegram OTP gateway built with FastAPI Python. Free unmetered Telegram bot delivery and Meta WhatsApp Cloud API.',
     creator: '@Luckyyaduvanshi',

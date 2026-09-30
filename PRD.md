@@ -1,4 +1,4 @@
-# PRD — "WA OTP": Free-tier WhatsApp OTP Gateway for Indian Mini Apps
+# PRD — "WOTP": Free-tier WhatsApp OTP Gateway for Indian Mini Apps
 
 Version 1.0 · September 2026 · Status: Draft for build
 Stack: **FastAPI (core API) + PocketBase (control plane / back office) + Next.js (public site & dashboard)**
@@ -7,7 +7,7 @@ Stack: **FastAPI (core API) + PocketBase (control plane / back office) + Next.js
 
 ## 1. Summary
 
-WA OTP is a tiny WhatsApp OTP delivery platform. Indian indie developers of "mini apps"
+WOTP is a tiny WhatsApp OTP delivery platform. Indian indie developers of "mini apps"
 (apps that rarely exceed 500 users — bhajan apps, community apps, senior-citizen services)
 verify users by mobile number instead of email, because their users know WhatsApp but not email.
 The platform exposes a two-call REST API (`/send`, `/verify`), gives every developer
@@ -199,7 +199,7 @@ verification code...`, Copy Code button) → allow-list 5 real numbers → fill 
 
 | Piece | Where | Notes |
 |---|---|---|
-| PocketBase | Self-hosted VPS (`pb.example.com` or local Docker) | systemd binary or Docker behind Caddy/Nginx, bound to localhost. Namespaced by `WAOTP_PB_COLLECTIONS_PREFIX=waotp_` plus its own `waotp_users` auth collection |
+| PocketBase | Self-hosted VPS (`pb.example.com` or local Docker) | systemd binary or Docker behind Caddy/Nginx, bound to localhost. Namespaced by `WOTP_PB_COLLECTIONS_PREFIX=waotp_` plus its own `waotp_users` auth collection |
 | FastAPI hot path | Self-hosted VPS or PaaS (`api.example.com`) | `rootDir: backend`. Must run `--workers 1` — locks, idempotency store and the cached PB token are all per-process |
 | HTTPS | Reverse proxy (Caddy/Nginx) | Reverse proxy terminates TLS for API and PocketBase |
 | Next.js site/dashboard | Self-hosted or PaaS (`otp.example.com`) | Root Directory `frontend/`; env `NEXT_PUBLIC_PB_URL`, `NEXT_PUBLIC_API_URL`, … |
@@ -211,20 +211,20 @@ the wallet ledger and is already serving another project, so relocating it is a 
 with real downside and no upside.
 
 Secrets are split by lifecycle. Environment secrets live in Render's env-var store
-(encrypted): `PB_SUPERUSER_EMAIL`/`PB_SUPERUSER_PASSWORD`, `WAOTP_FERNET_KEY`,
+(encrypted): `PB_SUPERUSER_EMAIL`/`PB_SUPERUSER_PASSWORD`, `WOTP_FERNET_KEY`,
 `TELEGRAM_WEBHOOK_SECRET`, `DASHBOARD_ORIGIN`. Operational secrets — Meta token, Telegram bot
 token, Razorpay key/secret — live Fernet-encrypted in the PocketBase `settings` row instead,
-so rotating them needs no redeploy. `WAOTP_FERNET_KEY` must therefore stay stable across every
+so rotating them needs no redeploy. `WOTP_FERNET_KEY` must therefore stay stable across every
 environment that reads that row.
 
 ## 11. Security checklist
 
 - [ ] API keys stored only as sha256; plaintext returned once at creation
 - [ ] OTP codes hashed; 5-min TTL; 3 attempts; single-use (delete on success)
-- [ ] PocketBase API rules: all waotp collections admin-only; users can't read others' data
+- [ ] PocketBase API rules: all wotp collections admin-only; users can't read others' data
 - [ ] Meta token encrypted at rest in `settings` (even a PB dump shouldn't leak it)
 - [ ] HTTPS everywhere; CORS on FastAPI limited to dashboard origin
-- [ ] PocketBase is shared with another project: `WAOTP_PB_COLLECTIONS_PREFIX` set (and equal on backend and dashboard) so wa-otp uses `waotp_*` and `waotp_users`, never the stock `users`/`api_keys`; no wa-otp data in another project's collections
+- [ ] PocketBase is shared with another project: `WOTP_PB_COLLECTIONS_PREFIX` set (and equal on backend and dashboard) so wotp uses `waotp_*` and `waotp_users`, never the stock `users`/`api_keys`; no wotp data in another project's collections
 - [ ] Customers call from their **backend**, never browser (docs + dashboard warning)
 - [ ] Rate limit per API key (e.g. 10 req/min) in FastAPI middleware
 
@@ -255,7 +255,7 @@ top-up conversion · p95 send latency (< 1.5 s excluding Meta) · Meta quality r
 | Telegram ≠ identity proof by itself | Only accept a shared contact when its `user_id` matches the sender's; otherwise anyone could share a friend's number |
 | Single VPS failure | Litestream backups; restore drill once before public launch |
 | Render free-tier cold start (~30–50 s after ~15 min idle) | Accepted for the beta — only the first request after idle pays it. Fix when it starts costing users: move the service to Starter, or keep a free uptime pinger on `/v1/health`, which alerts and prevents spin-down at once |
-| Shared PocketBase instance widens blast radius | wa-otp addresses only `waotp_*` collections and its own `waotp_users`; the other project's collections are never read or written. Asserted in the security checklist below |
+| Shared PocketBase instance widens blast radius | wotp addresses only `waotp_*` collections and its own `waotp_users`; the other project's collections are never read or written. Asserted in the security checklist below |
 | Competitors undercut | Compete on ₹50 UPI top-up + simple docs + live transparent pricing, not on lowest price |
 
 ## 15. Open questions
@@ -265,7 +265,7 @@ time (tariffs change often). 4. Refund policy for failed paid sends (suggest: au
 
 ## 16. Reference implementation in this repo
 
-`pb_hooks/waotp.pb.js`, `pb_migrations/…`, `pb_public/index.html` contain a working
+`pb_hooks/wotp.pb.js`, `pb_migrations/…`, `pb_public/index.html` contain a working
 PocketBase-only version of Phases 0–1 (routes, quota logic, key flow, tester page).
 Use them as the behavioural reference when building the FastAPI hot path — the logic,
 responses, and limits are already specced by that code and partially live-tested

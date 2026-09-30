@@ -31,7 +31,7 @@ from ..dependencies import idempotency_store, owner_lock, require_api_key, verif
 from ..providers import ProviderError, build_whatsapp_provider
 from ..services import telegram as telegram_service
 from ..services.otp import create_otp, verify_otp
-from ..services.pocketbase import wa_collection
+from ..services.pocketbase import wotp_collection
 from ..services.quota import (
     month_window,
     monthly_used,
@@ -42,7 +42,7 @@ from ..services.quota import (
 from ..services.settings import get_app_settings
 
 router = APIRouter(prefix="/v1/otp", tags=["otp"])
-logger = logging.getLogger("waotp")
+logger = logging.getLogger("wotp")
 
 CUSTOM_CODE_PATTERN = r"^[A-Za-z0-9]{4,10}$"
 
@@ -199,7 +199,7 @@ async def send_otp(
                         channel="whatsapp", detail=exc.message[:300], retryable=exc.retryable
                     ) from exc
         else:  # telegram
-            links = await pb.list(wa_collection("tg_links"), filter=f"phone='{phone}'", per_page=1)
+            links = await pb.list(wotp_collection("tg_links"), filter=f"phone='{phone}'", per_page=1)
             items = links.get("items") or []
             if not items:
                 # The deep link must name the operator's own bot. Guessing a
@@ -250,7 +250,7 @@ async def send_otp(
         # the retry that double-sends.
         try:
             row = await pb.create(
-                wa_collection("messages"),
+                wotp_collection("messages"),
                 {
                     "owner": owner["id"],
                     "api_key": api_key["id"],
@@ -368,7 +368,7 @@ async def usage(request: Request, ctx=Depends(require_api_key)):
 def get_mock_delivery(request: Request) -> bool:
     from ..core.config import get_settings
 
-    return get_settings().waotp_mock_delivery
+    return get_settings().wotp_mock_delivery
 
 
 async def _log_failure(pb, owner, api_key, phone, channel, error):
@@ -378,7 +378,7 @@ async def _log_failure(pb, owner, api_key, phone, channel, error):
     # mask the delivery failure the caller needs to see.
     try:
         await pb.create(
-            wa_collection("messages"),
+            wotp_collection("messages"),
             {
                 "owner": owner["id"],
                 "api_key": api_key["id"],

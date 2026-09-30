@@ -164,7 +164,7 @@ export function SiteFooter() {
       {/* Attribution & Copyright */}
       <div className='lm-foot__meta'>
         <div className='flex flex-wrap items-center gap-x-3 gap-y-1'>
-          <span>wa otp · open source</span>
+          <span>wotp · open source</span>
           <span>•</span>
           <span>
             Designed & Developed by{' '}

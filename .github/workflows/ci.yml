@@ -1,7 +1,7 @@
 name: CI
 
-# Runs on every push and every pull request. Both long-lived branches
-# (main, feat/self-host) are covered by the push trigger.
+# Runs on every push and every pull request, on every branch. `main` is the
+# single trunk; feature branches get the same checks before they merge into it.
 on:
   push:
   pull_request:

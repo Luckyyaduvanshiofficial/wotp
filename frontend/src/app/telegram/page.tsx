@@ -29,7 +29,7 @@ export const metadata: Metadata = {
     description:
       'Deliver instant one-time passwords via Telegram Bot API with zero fees, no Meta KYC, and lightning-fast FastAPI Python speed. 100% free and unmetered.',
     url: `${SITE_URL}/telegram`,
-    siteName: 'WA OTP',
+    siteName: 'WOTP',
     type: 'website'
   },
   twitter: {
@@ -40,13 +40,13 @@ export const metadata: Metadata = {
   }
 };
 
-const SEND_TELEGRAM_CALL = `curl -X POST "$WAOTP_API/v1/otp/send" \\
-  -H "X-Api-Key: $WAOTP_KEY" \\
+const SEND_TELEGRAM_CALL = `curl -X POST "$WOTP_API/v1/otp/send" \\
+  -H "X-Api-Key: $WOTP_KEY" \\
   -H "Content-Type: application/json" \\
   -d '{"to": "919876543210", "channel": "telegram"}'`;
 
-const VERIFY_TELEGRAM_CALL = `curl -X POST "$WAOTP_API/v1/otp/verify" \\
-  -H "X-Api-Key: $WAOTP_KEY" \\
+const VERIFY_TELEGRAM_CALL = `curl -X POST "$WOTP_API/v1/otp/verify" \\
+  -H "X-Api-Key: $WOTP_KEY" \\
   -H "Content-Type: application/json" \\
   -d '{"to": "919876543210", "code": "123456"}'`;
 
@@ -94,7 +94,7 @@ export default function TelegramLandingPage() {
   const jsonLd = {
     '@context': 'https://schema.org',
     '@type': 'SoftwareApplication',
-    name: 'WA OTP - Telegram OTP Gateway',
+    name: 'WOTP - Telegram OTP Gateway',
     applicationCategory: 'SecurityApplication',
     operatingSystem: 'Linux, Docker, Cloud',
     offers: {

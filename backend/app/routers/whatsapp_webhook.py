@@ -25,11 +25,11 @@ from fastapi import APIRouter, Header, Request
 from fastapi.responses import JSONResponse, PlainTextResponse
 
 from ..providers import build_whatsapp_provider
-from ..services.pocketbase import pb_literal, wa_collection
+from ..services.pocketbase import pb_literal, wotp_collection
 from ..services.settings import get_app_settings
 
 router = APIRouter(tags=["whatsapp"])
-logger = logging.getLogger("waotp")
+logger = logging.getLogger("wotp")
 
 # Only these are meaningful to persist. Meta also sends statuses we do not
 # model ("deleted", "warning", ...) — storing one would fail the select field
@@ -141,7 +141,7 @@ async def _apply_status(request: Request, event) -> int:
     # exist because this is the one filter in the codebase whose value comes
     # from an unauthenticated third party.
     found = await pb.list(
-        wa_collection("messages"),
+        wotp_collection("messages"),
         filter=f"wa_message_id={pb_literal(event.provider_message_id)}",
         per_page=1,
     )
@@ -165,5 +165,5 @@ async def _apply_status(request: Request, event) -> int:
     patch: dict = {"status": event.status}
     if event.status == "failed" and event.error:
         patch["error"] = event.error[:500]
-    await pb.update(wa_collection("messages"), row["id"], patch)
+    await pb.update(wotp_collection("messages"), row["id"], patch)
     return 1

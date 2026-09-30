@@ -4,14 +4,14 @@ import { SiteFooter } from '@/features/landing/components/site-footer';
 import { SITE_URL } from '@/lib/site';
 
 export const metadata: Metadata = {
-  title: 'Privacy Policy — WA OTP Gateway',
+  title: 'Privacy Policy — WOTP Gateway',
   description:
-    'Privacy Policy for WA OTP Gateway. We believe in privacy by design: zero data selling, SHA-256 hashed OTPs, and Fernet-encrypted credentials.',
+    'Privacy Policy for WOTP Gateway. We believe in privacy by design: zero data selling, SHA-256 hashed OTPs, and Fernet-encrypted credentials.',
   openGraph: {
-    title: 'Privacy Policy — WA OTP Gateway',
-    description: 'Privacy Policy for WA OTP Gateway. Privacy by design, zero data selling.',
+    title: 'Privacy Policy — WOTP Gateway',
+    description: 'Privacy Policy for WOTP Gateway. Privacy by design, zero data selling.',
     url: `${SITE_URL}/privacy`,
-    siteName: 'WA OTP',
+    siteName: 'WOTP',
     type: 'website'
   }
 };
@@ -47,10 +47,10 @@ export default function PrivacyPolicyPage() {
                 1. Overview & Commitment
               </h2>
               <p>
-                WA OTP (&quot;we&quot;, &quot;our&quot;, or &quot;the Service&quot;) is an
-                open-source WhatsApp and Telegram OTP Gateway created by Lucky Yaduvanshi and hosted
-                under CodaiPro. We respect the privacy of developers, operators, and their
-                end-users. We do not sell, rent, or monetize personal data.
+                WOTP (&quot;we&quot;, &quot;our&quot;, or &quot;the Service&quot;) is an open-source
+                WhatsApp and Telegram OTP Gateway created by Lucky Yaduvanshi and hosted under
+                CodaiPro. We respect the privacy of developers, operators, and their end-users. We
+                do not sell, rent, or monetize personal data.
               </p>
             </div>
 
@@ -125,7 +125,7 @@ export default function PrivacyPolicyPage() {
                 5. Self-Hosted Installations
               </h2>
               <p>
-                When you deploy WA OTP via Docker Compose on your own server, zero telemetry or data
+                When you deploy WOTP via Docker Compose on your own server, zero telemetry or data
                 is transmitted to our servers. You maintain 100% ownership, governance, and control
                 of your database, logs, and user communications.
               </p>

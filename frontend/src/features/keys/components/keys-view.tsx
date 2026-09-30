@@ -206,7 +206,7 @@ export function KeysView() {
                 {keys.map((k) => (
                   <TableRow key={k.id}>
                     <TableCell className='font-medium'>{k.label || 'Unnamed key'}</TableCell>
-                    <TableCell className='font-mono text-xs'>waotp_••••{k.last4}</TableCell>
+                    <TableCell className='font-mono text-xs'>wotp_••••{k.last4}</TableCell>
                     <TableCell>
                       <Badge variant={k.active ? 'secondary' : 'outline'}>
                         {k.active ? 'active' : 'inactive'}

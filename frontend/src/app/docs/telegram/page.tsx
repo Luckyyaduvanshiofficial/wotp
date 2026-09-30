@@ -21,7 +21,7 @@ export const metadata: Metadata = {
     description:
       'Create a bot, register the webhook, and handle the one bounced send that links a new phone.',
     url: `${SITE_URL}/docs/telegram`,
-    siteName: 'WA OTP',
+    siteName: 'WOTP',
     type: 'article'
   }
 };
@@ -32,7 +32,7 @@ const jsonLd = {
   headline: 'Sending one-time passwords through a Telegram bot',
   url: `${SITE_URL}/docs/telegram`,
   about: ['Telegram Bot API', 'one-time password', 'phone verification'],
-  isPartOf: { '@type': 'WebSite', name: 'WA OTP', url: SITE_URL }
+  isPartOf: { '@type': 'WebSite', name: 'WOTP', url: SITE_URL }
 };
 
 export default function TelegramDocsPage() {

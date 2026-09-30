@@ -7,14 +7,14 @@ import { Icons } from '@/components/icons';
 import { SITE_URL } from '@/lib/site';
 
 export const metadata: Metadata = {
-  title: 'Report a Bug — WA OTP Gateway Issue Tracker',
+  title: 'Report a Bug — WOTP Gateway Issue Tracker',
   description:
-    'Found an issue, bug, or unexpected behavior in WA OTP Gateway? Submit a bug report on GitHub or contact the maintainers directly.',
+    'Found an issue, bug, or unexpected behavior in WOTP Gateway? Submit a bug report on GitHub or contact the maintainers directly.',
   openGraph: {
-    title: 'Report a Bug — WA OTP Gateway Issue Tracker',
-    description: 'Found an issue with WA OTP Gateway? Submit a bug report on GitHub.',
+    title: 'Report a Bug — WOTP Gateway Issue Tracker',
+    description: 'Found an issue with WOTP Gateway? Submit a bug report on GitHub.',
     url: `${SITE_URL}/report-bug`,
-    siteName: 'WA OTP',
+    siteName: 'WOTP',
     type: 'website'
   }
 };
@@ -77,7 +77,7 @@ export default function ReportBugPage() {
               </h3>
               <p className='text-xs text-[var(--color-ink-muted)] leading-relaxed'>
                 If messages are written to the database but no real WhatsApp/Telegram message
-                arrives, verify if <code>WAOTP_MOCK_DELIVERY=1</code> is set. Set it to{' '}
+                arrives, verify if <code>WOTP_MOCK_DELIVERY=1</code> is set. Set it to{' '}
                 <code>0</code> for live dispatch.
               </p>
             </div>

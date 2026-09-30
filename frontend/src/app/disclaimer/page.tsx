@@ -4,14 +4,14 @@ import { SiteFooter } from '@/features/landing/components/site-footer';
 import { SITE_URL } from '@/lib/site';
 
 export const metadata: Metadata = {
-  title: 'Disclaimer — WA OTP Gateway',
+  title: 'Disclaimer — WOTP Gateway',
   description:
-    'Trademark disclaimer and independent project disclosure for WA OTP Gateway. Not affiliated with Meta Platforms, Inc., WhatsApp LLC, or Telegram FZ-LLC.',
+    'Trademark disclaimer and independent project disclosure for WOTP Gateway. Not affiliated with Meta Platforms, Inc., WhatsApp LLC, or Telegram FZ-LLC.',
   openGraph: {
-    title: 'Disclaimer — WA OTP Gateway',
+    title: 'Disclaimer — WOTP Gateway',
     description: 'Trademark disclaimer and independent project disclosure.',
     url: `${SITE_URL}/disclaimer`,
-    siteName: 'WA OTP',
+    siteName: 'WOTP',
     type: 'website'
   }
 };
@@ -44,10 +44,9 @@ export default function DisclaimerPage() {
                 1. Independent Project Disclosure
               </h2>
               <p>
-                WA OTP is an independent open-source software project developed by Lucky Yaduvanshi
-                and hosted under CodaiPro. WA OTP is <strong>NOT</strong> affiliated with,
-                associated with, authorized by, endorsed by, or in any way officially connected
-                with:
+                WOTP is an independent open-source software project developed by Lucky Yaduvanshi
+                and hosted under CodaiPro. WOTP is <strong>NOT</strong> affiliated with, associated
+                with, authorized by, endorsed by, or in any way officially connected with:
               </p>
               <ul className='list-disc pl-5 space-y-1.5'>
                 <li>

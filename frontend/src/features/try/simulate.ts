@@ -137,7 +137,7 @@ const randomId = (): string =>
 const randomCode = (): string => String(Math.floor(100000 + Math.random() * 900000));
 
 /** A placeholder bot handle. The real one comes from the installation's env. */
-const BOT_USERNAME = 'waotp_demo_bot';
+const BOT_USERNAME = 'wotp_demo_bot';
 const linkUrl = (token: string) => `https://t.me/${BOT_USERNAME}?start=${token}`;
 
 const invalidRequest = (detail: unknown): SimResult => ({

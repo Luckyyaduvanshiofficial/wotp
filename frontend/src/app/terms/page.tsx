@@ -4,14 +4,14 @@ import { SiteFooter } from '@/features/landing/components/site-footer';
 import { SITE_URL } from '@/lib/site';
 
 export const metadata: Metadata = {
-  title: 'Terms & Conditions — WA OTP Gateway',
+  title: 'Terms & Conditions — WOTP Gateway',
   description:
-    'Terms of Service and Conditions for WA OTP Gateway. Fair usage guidelines, open-source rights, and acceptable use policies.',
+    'Terms of Service and Conditions for WOTP Gateway. Fair usage guidelines, open-source rights, and acceptable use policies.',
   openGraph: {
-    title: 'Terms & Conditions — WA OTP Gateway',
-    description: 'Terms of Service for WA OTP Gateway.',
+    title: 'Terms & Conditions — WOTP Gateway',
+    description: 'Terms of Service for WOTP Gateway.',
     url: `${SITE_URL}/terms`,
-    siteName: 'WA OTP',
+    siteName: 'WOTP',
     type: 'website'
   }
 };
@@ -47,7 +47,7 @@ export default function TermsPage() {
                 1. Acceptance of Terms
               </h2>
               <p>
-                By accessing or utilizing the WA OTP API, dashboard, or associated services provided
+                By accessing or utilizing the WOTP API, dashboard, or associated services provided
                 by CodaiPro, you agree to be bound by these Terms and Conditions. If you disagree
                 with any portion of these terms, your sole remedy is to cease using the hosted
                 platform or self-host the open-source software under its repository license.
@@ -59,7 +59,7 @@ export default function TermsPage() {
                 2. Acceptable Use & Prohibited Conduct
               </h2>
               <p>
-                WA OTP is built for legitimate user verification, registration authentication, and
+                WOTP is built for legitimate user verification, registration authentication, and
                 login challenges. You agree NOT to:
               </p>
               <ul className='list-disc pl-5 space-y-1.5'>
@@ -99,9 +99,9 @@ export default function TermsPage() {
                 4. Open-Source Rights & Self-Hosting
               </h2>
               <p>
-                The underlying source code of WA OTP is distributed as free and open-source
-                software. You are free to inspect, modify, fork, and self-host the application on
-                your own servers in compliance with the repository license.
+                The underlying source code of WOTP is distributed as free and open-source software.
+                You are free to inspect, modify, fork, and self-host the application on your own
+                servers in compliance with the repository license.
               </p>
             </div>
 

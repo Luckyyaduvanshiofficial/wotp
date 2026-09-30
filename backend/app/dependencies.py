@@ -25,7 +25,7 @@ from .core.errors import (
     UpstreamUnavailable,
 )
 from .core.security import sha256_hex
-from .services.pocketbase import PocketBaseError, wa_collection
+from .services.pocketbase import PocketBaseError, wotp_collection
 from .services.settings import get_app_settings
 
 _API_KEY_TTL = 60.0
@@ -242,7 +242,7 @@ idempotency_store = IdempotencyStore()
 _api_key_header = APIKeyHeader(
     name="X-Api-Key",
     auto_error=False,
-    description="Developer API key (waotp_…); shown once at creation.",
+    description="Developer API key (wotp_…); shown once at creation.",
 )
 _dashboard_bearer = HTTPBearer(
     auto_error=False,
@@ -285,7 +285,7 @@ async def resolve_api_key(request: Request, x_api_key: str | None) -> dict:
             raise InvalidApiKey()
 
         pb = request.app.state.pb
-        res = await pb.list(wa_collection("api_keys"), filter=f"key_hash='{key_hash}'", per_page=1)
+        res = await pb.list(wotp_collection("api_keys"), filter=f"key_hash='{key_hash}'", per_page=1)
         items = res.get("items") or []
         if not items:
             _remember_unknown(key_hash, now)
@@ -295,7 +295,7 @@ async def resolve_api_key(request: Request, x_api_key: str | None) -> dict:
             raise KeyDisabled()
         # owner lives in the app's own auth collection ({prefix}users when
         # running on a shared instance) — never in other apps' user pools
-        owner = await pb.get_one(wa_collection("users"), api_key["owner"])
+        owner = await pb.get_one(wotp_collection("users"), api_key["owner"])
         if owner.get("status") == "suspended":
             raise KeyDisabled()
         _api_key_cache[key_hash] = ((api_key, owner), now)

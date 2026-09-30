@@ -34,15 +34,15 @@ RUN set -eux; \
 
 # Non-root, and the data dir is created HERE so that a fresh named volume
 # inherits this ownership when Docker first populates it.
-RUN adduser -D -H -u 10001 waotp \
+RUN adduser -D -H -u 10001 wotp \
  && mkdir -p /pb/pb_data \
- && chown -R waotp:waotp /pb
+ && chown -R wotp:wotp /pb
 
-COPY --chown=waotp:waotp docker-entrypoint.sh /usr/local/bin/docker-entrypoint.sh
+COPY --chown=wotp:wotp docker-entrypoint.sh /usr/local/bin/docker-entrypoint.sh
 RUN chmod +x /usr/local/bin/docker-entrypoint.sh
 
 WORKDIR /pb
-USER waotp
+USER wotp
 
 # 8090 serves both the API and the admin UI. Put it behind TLS before exposing
 # it: the admin UI is the control plane for every credential this app holds.

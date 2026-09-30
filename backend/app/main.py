@@ -11,7 +11,7 @@ from .core.tracing import RequestIdMiddleware
 from .routers import health, keys, otp, telegram_webhook, whatsapp_webhook
 from .services.pocketbase import PBClient
 
-logger = logging.getLogger("waotp")
+logger = logging.getLogger("wotp")
 
 
 @asynccontextmanager
@@ -22,7 +22,7 @@ async def lifespan(app: FastAPI):
     # so the slow path is paid once per startup.
     http = httpx.AsyncClient(
         timeout=httpx.Timeout(45.0, connect=10.0),
-        headers={"User-Agent": "waotp-gateway/0.1"},
+        headers={"User-Agent": "wotp-gateway/0.1"},
         follow_redirects=True,
     )
     app.state.http = http

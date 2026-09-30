@@ -2,13 +2,13 @@
 
 ## Supported versions
 
-WA OTP is **pre-1.0** and has no tagged releases yet. Only the current `main` branch receives security fixes. There is no backport policy because there is nothing yet to backport to — if you are running a fork or a pinned commit, track `main`.
+WOTP is **pre-1.0** and has no tagged releases yet. Only the current `main` branch receives security fixes. There is no backport policy because there is nothing yet to backport to — if you are running a fork or a pinned commit, track `main`.
 
 ## Reporting a vulnerability
 
 **Please do not open a public issue.**
 
-Report privately through **[GitHub Security Advisories](https://github.com/Luckyyaduvanshiofficial/wa-otp/security/advisories/new)** — the *Report a vulnerability* button under the repository's **Security** tab. It keeps the report, the discussion, and the eventual fix disclosure in one place without tipping anyone off.
+Report privately through **[GitHub Security Advisories](https://github.com/Luckyyaduvanshiofficial/wotp/security/advisories/new)** — the *Report a vulnerability* button under the repository's **Security** tab. It keeps the report, the discussion, and the eventual fix disclosure in one place without tipping anyone off.
 
 A useful report includes:
 
@@ -35,7 +35,7 @@ These are the areas worth your attention, because they are where a bug costs som
 - **Authentication bypass** on `X-Api-Key` or on the PocketBase user token.
 - **Quota, throttle, or rate-limit bypass.** This is the expensive one — unbounded sends spend the operator's real Meta balance. Includes the 60-second auth cache: a deactivated key that keeps working, or an identity confusion that lets one key spend another owner's quota.
 - **Anything that exposes PocketBase or its superuser to a customer.** PocketBase is never meant to be reachable by anyone but the operator and FastAPI.
-- **Cross-project data leakage** on a shared PocketBase instance through the `WAOTP_PB_COLLECTIONS_PREFIX` isolation. Two projects sharing one instance is a supported deployment; one reading the other's data is a critical bug.
+- **Cross-project data leakage** on a shared PocketBase instance through the `WOTP_PB_COLLECTIONS_PREFIX` isolation. Two projects sharing one instance is a supported deployment; one reading the other's data is a critical bug.
 - **Fernet key handling** for the encrypted Meta and Telegram secrets in the `settings` row, and anything that leaks a decrypted secret.
 - **Telegram webhook spoofing.** The webhook requires `TELEGRAM_WEBHOOK_SECRET`, and accepts a shared contact only if `contact.user_id == from.id`. A bypass of either lets an attacker receive someone else's OTPs — the highest-severity class of bug in this project.
 - **SSRF or injection through the OTP message payload** or the phone number field.
@@ -58,10 +58,10 @@ If you are self-hosting, this is the short list that matters most.
 >
 > Deleting the file is not enough. Git history retains it, and scrapers watch public pushes and pick up credentials within seconds. Treat any secret that has touched a repository, a screenshot, a chat, or a log as already public.
 
-- [ ] **Rotate on any suspicion.** The PocketBase superuser password; `WAOTP_FERNET_KEY` (rotating it means re-entering the Meta token into the `settings` row, since the old ciphertext can no longer be decrypted); `TELEGRAM_WEBHOOK_SECRET` (re-run `scripts/set_telegram_webhook.py`).
+- [ ] **Rotate on any suspicion.** The PocketBase superuser password; `WOTP_FERNET_KEY` (rotating it means re-entering the Meta token into the `settings` row, since the old ciphertext can no longer be decrypted); `TELEGRAM_WEBHOOK_SECRET` (re-run `scripts/set_telegram_webhook.py`).
 - [ ] **Keep PocketBase off the public internet.** The compose stack already binds it to `127.0.0.1`; if you changed that, put a firewall or a proxy in front. Customers talk to FastAPI and nothing else. Reach the admin UI over an SSH tunnel.
 - [ ] **Set `META_APP_SECRET`.** The API refuses to boot in production without it when WhatsApp credentials are configured, because unsigned webhook callbacks can be forged by anyone who learns the URL.
-- [ ] **Set `WAOTP_MOCK_DELIVERY=0` in production.** Left at `1`, delivery is faked — which is exactly the kind of thing that is discovered by a user who never received their code.
+- [ ] **Set `WOTP_MOCK_DELIVERY=0` in production.** Left at `1`, delivery is faked — which is exactly the kind of thing that is discovered by a user who never received their code.
 - [ ] **Put the backend behind TLS.** All of it — the API, the dashboard, and the PocketBase admin UI if it is reachable at all.
 - [ ] **Restrict CORS.** Set `DASHBOARD_ORIGIN` to your dashboard's origin specifically, not `*`.
 - [ ] **Set `TRUST_PROXY_HEADERS=1` only behind a proxy you control,** and only one that does not forward a client-supplied `X-Forwarded-For` verbatim. It is what makes the per-IP limit meaningful rather than bypassable.

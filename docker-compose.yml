@@ -1,4 +1,4 @@
-# WA OTP — full stack: FastAPI hot path, PocketBase control plane, Next.js dashboard.
+# WOTP — full stack: FastAPI hot path, PocketBase control plane, Next.js dashboard.
 #
 # Quick start:
 #   1. cp .env.example .env    # or cp backend/.env.example backend/.env
@@ -117,8 +117,8 @@ services:
         NEXT_PUBLIC_PB_URL: ${NEXT_PUBLIC_PB_URL:-http://localhost:8090}
         NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://localhost:8000}
         NEXT_PUBLIC_APP_URL: ${NEXT_PUBLIC_APP_URL:-http://localhost:3000}
-        # Must match WAOTP_PB_COLLECTIONS_PREFIX in backend/.env.
-        NEXT_PUBLIC_PB_COLLECTIONS_PREFIX: ${WAOTP_PB_COLLECTIONS_PREFIX:-waotp_}
+        # Must match WOTP_PB_COLLECTIONS_PREFIX in backend/.env.
+        NEXT_PUBLIC_PB_COLLECTIONS_PREFIX: ${WOTP_PB_COLLECTIONS_PREFIX:-waotp_}
         # Leave empty to render no GitHub chrome on the landing page.
         NEXT_PUBLIC_GITHUB_REPO: ${NEXT_PUBLIC_GITHUB_REPO:-}
     restart: unless-stopped

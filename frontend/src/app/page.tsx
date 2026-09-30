@@ -13,7 +13,7 @@ import { Icons } from '@/components/icons';
 import { SITE_URL } from '@/lib/site';
 
 export const metadata: Metadata = {
-  title: 'WA OTP: open source, self-hosted WhatsApp & Telegram OTP gateway',
+  title: 'WOTP: open source, self-hosted WhatsApp & Telegram OTP gateway',
   description:
     'A free, open-source OTP gateway you host yourself on your own Meta WhatsApp Cloud API and Telegram bot credentials. Two HTTP calls, hashed codes, no hosted tier and nothing to pay this project.',
   keywords: [
@@ -30,16 +30,16 @@ export const metadata: Metadata = {
   ],
   alternates: { canonical: '/' },
   openGraph: {
-    title: 'WA OTP: open source, self-hosted WhatsApp & Telegram OTP gateway',
+    title: 'WOTP: open source, self-hosted WhatsApp & Telegram OTP gateway',
     description:
       'Two HTTP calls, your own Meta and Telegram credentials, no hosted tier. Try the whole API in your browser before you install anything.',
     url: `${SITE_URL}`,
-    siteName: 'WA OTP',
+    siteName: 'WOTP',
     type: 'website'
   },
   twitter: {
     card: 'summary_large_image',
-    title: 'WA OTP: open source, self-hosted OTP gateway',
+    title: 'WOTP: open source, self-hosted OTP gateway',
     description:
       'Two HTTP calls, your own credentials, no hosted tier. Try the whole API in your browser first.'
   }
@@ -50,13 +50,13 @@ export const metadata: Metadata = {
  * copied verbatim from backend/docs/api.md §1, with the host and key left as
  * shell variables.
  */
-const SEND_CALL = `curl -X POST "$WAOTP_API/v1/otp/send" \\
-  -H "X-Api-Key: $WAOTP_KEY" \\
+const SEND_CALL = `curl -X POST "$WOTP_API/v1/otp/send" \\
+  -H "X-Api-Key: $WOTP_KEY" \\
   -H "Content-Type: application/json" \\
   -d '{"to": "919876543210", "channel": "whatsapp"}'`;
 
-const VERIFY_CALL = `curl -X POST "$WAOTP_API/v1/otp/verify" \\
-  -H "X-Api-Key: $WAOTP_KEY" \\
+const VERIFY_CALL = `curl -X POST "$WOTP_API/v1/otp/verify" \\
+  -H "X-Api-Key: $WOTP_KEY" \\
   -H "Content-Type: application/json" \\
   -d '{"to": "919876543210", "code": "123456"}'`;
 
@@ -122,7 +122,7 @@ export default function LandingPage() {
   const jsonLd = {
     '@context': 'https://schema.org',
     '@type': 'SoftwareApplication',
-    name: 'WA OTP',
+    name: 'WOTP',
     applicationCategory: 'DeveloperApplication',
     applicationSubCategory: 'One-time password gateway',
     operatingSystem: 'Linux, Docker, macOS',

@@ -17,7 +17,7 @@ class Settings(BaseSettings):
     )
 
     # --- Application identity ------------------------------------------------
-    app_name: str = "WA OTP"
+    app_name: str = "WOTP"
     # `development` and `production` behave differently: production refuses to
     # boot with missing secrets rather than running with a weakened default.
     app_env: str = Field(
@@ -35,7 +35,7 @@ class Settings(BaseSettings):
     pb_superuser_email: str = ""
     pb_superuser_password: str = ""
 
-    # Prefix prepended to every wa-otp collection name (users -> waotp_users,
+    # Prefix prepended to every wotp collection name (users -> waotp_users,
     # api_keys -> waotp_api_keys, ...). It exists so this app can share one
     # PocketBase instance with other projects without collection-name
     # collisions. For a dedicated PocketBase serving only this app, the default
@@ -46,7 +46,8 @@ class Settings(BaseSettings):
         default="waotp_",
         validation_alias=AliasChoices(
             "pb_collections_prefix",  # default env name + .env key
-            "waotp_pb_collections_prefix",  # WAOTP_-prefixed env variant
+            "wotp_pb_collections_prefix",  # WOTP_-prefixed env variant
+            "waotp_pb_collections_prefix",  # pre-rename name; still honoured
         ),
     )
 
@@ -54,7 +55,13 @@ class Settings(BaseSettings):
     # fernet: encrypts the Meta token at rest in the PB `settings` row, and
     # signs Telegram link tokens. Generate:
     #   python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"
-    waotp_fernet_key: str = ""
+    wotp_fernet_key: str = Field(
+        default="",
+        # `waotp_fernet_key` is the pre-rename env name. Dropping it would leave
+        # this unset on an existing install, and every provider token encrypted
+        # with that key would then fail to decrypt.
+        validation_alias=AliasChoices("wotp_fernet_key", "waotp_fernet_key"),
+    )
 
     # Shared secret Telegram echoes back in X-Telegram-Bot-Api-Secret-Token.
     # Must match the secret_token passed to setWebhook.
@@ -66,7 +73,10 @@ class Settings(BaseSettings):
 
     # Dev-only: fake provider delivery so the full flow runs without Meta or
     # Telegram credentials. Must be false in production.
-    waotp_mock_delivery: bool = False
+    wotp_mock_delivery: bool = Field(
+        default=False,
+        validation_alias=AliasChoices("wotp_mock_delivery", "waotp_mock_delivery"),
+    )
 
     # NOTE: there is deliberately no ALLOW_SIGNUP setting here. Whether an
     # account can be self-registered is decided by the PocketBase auth
@@ -82,7 +92,7 @@ class Settings(BaseSettings):
 
     meta_phone_number_id: str = Field(
         default="",
-        validation_alias=AliasChoices("meta_phone_number_id", "waotp_meta_phone_number_id"),
+        validation_alias=AliasChoices("meta_phone_number_id", "wotp_meta_phone_number_id", "waotp_meta_phone_number_id"),
     )
     meta_waba_id: str = Field(
         default="",
@@ -90,7 +100,7 @@ class Settings(BaseSettings):
     )
     meta_access_token: str = Field(
         default="",
-        validation_alias=AliasChoices("meta_access_token", "meta_token", "waotp_meta_token"),
+        validation_alias=AliasChoices("meta_access_token", "meta_token", "wotp_meta_token", "waotp_meta_token"),
     )
     meta_template: str = "verification_code"
     meta_template_lang: str = "en_US"
@@ -102,7 +112,7 @@ class Settings(BaseSettings):
     # install — this is a test-number convenience, not a default.
     meta_sandbox_template: str = Field(
         default="",
-        validation_alias=AliasChoices("meta_sandbox_template", "waotp_meta_sandbox_template"),
+        validation_alias=AliasChoices("meta_sandbox_template", "wotp_meta_sandbox_template", "waotp_meta_sandbox_template"),
     )
     # Echoed back during Meta's webhook verification handshake. You choose this
     # string and paste the same value into the Meta app dashboard.
@@ -180,14 +190,14 @@ class Settings(BaseSettings):
             return self
 
         missing: list[str] = []
-        if not self.waotp_fernet_key:
-            missing.append("WAOTP_FERNET_KEY")
+        if not self.wotp_fernet_key:
+            missing.append("WOTP_FERNET_KEY")
         if not self.secret_key:
             missing.append("SECRET_KEY")
         if not self.pb_superuser_password:
             missing.append("PB_SUPERUSER_PASSWORD")
-        if self.waotp_mock_delivery:
-            missing.append("WAOTP_MOCK_DELIVERY must be 0 (mock delivery fakes sends)")
+        if self.wotp_mock_delivery:
+            missing.append("WOTP_MOCK_DELIVERY must be 0 (mock delivery fakes sends)")
 
         # WhatsApp configured but unsigned callbacks accepted: anyone who
         # learns the webhook URL could post forged delivery statuses, and those

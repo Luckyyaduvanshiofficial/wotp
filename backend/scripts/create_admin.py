@@ -13,7 +13,7 @@ Usage:
     .venv/bin/python scripts/create_admin.py you@example.com 'new-password' --reset-password
 
 The password is read from the argument or, if omitted, from the
-WAOTP_ADMIN_PASSWORD env var (preferred: it keeps the secret out of your shell
+WOTP_ADMIN_PASSWORD env var (preferred: it keeps the secret out of your shell
 history). It is never printed back.
 """
 
@@ -33,7 +33,7 @@ def main() -> int:
     parser.add_argument(
         "password",
         nargs="?",
-        help="operator password (min 8 chars); omit to read WAOTP_ADMIN_PASSWORD",
+        help="operator password (min 8 chars); omit to read WOTP_ADMIN_PASSWORD",
     )
     parser.add_argument(
         "--reset-password",
@@ -42,26 +42,26 @@ def main() -> int:
     )
     args = parser.parse_args()
 
-    password = args.password or os.environ.get("WAOTP_ADMIN_PASSWORD") or ""
+    password = args.password or os.environ.get("WOTP_ADMIN_PASSWORD") or ""
     if len(password) < 8:
         print(
             "error: password must be at least 8 characters (pass it as the second\n"
-            "argument or set WAOTP_ADMIN_PASSWORD). PocketBase enforces this too.",
+            "argument or set WOTP_ADMIN_PASSWORD). PocketBase enforces this too.",
             file=sys.stderr,
         )
         return 1
 
     from app.core.config import get_settings
-    from app.services.pocketbase import wa_collection
+    from app.services.pocketbase import wotp_collection
 
     cfg = get_settings()
     base = cfg.pb_url.rstrip("/")
-    users = wa_collection("users")
+    users = wotp_collection("users")
 
     with httpx.Client(
         base_url=base,
         timeout=30,
-        headers={"User-Agent": "waotp-create-admin/0.1"},
+        headers={"User-Agent": "wotp-create-admin/0.1"},
         follow_redirects=True,
     ) as http:
         r = http.post(

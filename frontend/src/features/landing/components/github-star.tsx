@@ -3,7 +3,7 @@ import { Icons } from '@/components/icons';
 /**
  * The repository URL defaults to the official repo if NEXT_PUBLIC_GITHUB_REPO is not set.
  */
-export const GITHUB_REPO = process.env.NEXT_PUBLIC_GITHUB_REPO || 'Luckyyaduvanshiofficial/wa-otp';
+export const GITHUB_REPO = process.env.NEXT_PUBLIC_GITHUB_REPO || 'Luckyyaduvanshiofficial/wotp';
 
 export const GITHUB_URL = `https://github.com/${GITHUB_REPO}`;
 

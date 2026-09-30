@@ -26,7 +26,9 @@
  * install created after the init migration gained them.
  */
 migrate((app) => {
-  const PREFIX = ($os.getenv("WAOTP_PB_COLLECTIONS_PREFIX") || "waotp_").trim()
+  const PREFIX = ($os.getenv("WOTP_PB_COLLECTIONS_PREFIX") ||
+    $os.getenv("WAOTP_PB_COLLECTIONS_PREFIX") ||
+    "waotp_").trim()
   const physical = (logical) => PREFIX + logical
 
   let settings
@@ -49,7 +51,9 @@ migrate((app) => {
   }
   if (dirty) app.save(settings)
 }, (app) => {
-  const PREFIX = ($os.getenv("WAOTP_PB_COLLECTIONS_PREFIX") || "waotp_").trim()
+  const PREFIX = ($os.getenv("WOTP_PB_COLLECTIONS_PREFIX") ||
+    $os.getenv("WAOTP_PB_COLLECTIONS_PREFIX") ||
+    "waotp_").trim()
   const physical = (logical) => PREFIX + logical
 
   try {

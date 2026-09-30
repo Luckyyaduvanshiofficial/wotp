@@ -8,7 +8,7 @@
 
 from datetime import datetime, timedelta, timezone
 
-from .pocketbase import wa_collection
+from .pocketbase import wotp_collection
 
 MONTH_LIMIT_FALLBACK_NOTE = "limits live in the settings collection"
 
@@ -44,7 +44,7 @@ async def monthly_used(pb, owner_id: str, now: datetime) -> int:
     """
     start, _ = month_window(now)
     res = await pb.list(
-        wa_collection("messages"),
+        wotp_collection("messages"),
         filter=(
             f"owner='{owner_id}' && channel='whatsapp' && billable=true "
             f"&& created>='{pb_date(start)}'"
@@ -57,7 +57,7 @@ async def monthly_used(pb, owner_id: str, now: datetime) -> int:
 async def phone_sends_last_hour(pb, owner_id: str, phone: str, now: datetime) -> int:
     since = now - timedelta(hours=1)
     res = await pb.list(
-        wa_collection("otp_codes"),
+        wotp_collection("otp_codes"),
         filter=f"owner='{owner_id}' && phone='{phone}' && created>='{pb_date(since)}'",
         per_page=1,
     )
@@ -77,7 +77,7 @@ async def sent_within(pb, owner_id: str, phone: str, seconds: int, now: datetime
         return False
     since = now - timedelta(seconds=seconds)
     res = await pb.list(
-        wa_collection("otp_codes"),
+        wotp_collection("otp_codes"),
         filter=f"owner='{owner_id}' && phone='{phone}' && created>='{pb_date(since)}'",
         per_page=1,
     )

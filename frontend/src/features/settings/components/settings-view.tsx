@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
 import { useAppForm } from '@/lib/form';
-import { pb, pbUsers, type WaotpUser } from '@/lib/pb';
+import { pb, pbUsers, type WotpUser } from '@/lib/pb';
 import { ThemeModeToggle } from '@/components/themes/theme-mode-toggle';
 import { ThemeSelector } from '@/components/themes/theme-selector';
 import { CopyButton } from '@/components/copy-button';
@@ -23,8 +23,8 @@ const profileSchema = z.object({
 });
 
 function ProfileFormCard() {
-  const [user, setUser] = React.useState<WaotpUser | null>(
-    (pb.authStore.record as unknown as WaotpUser | null) ?? null
+  const [user, setUser] = React.useState<WotpUser | null>(
+    (pb.authStore.record as unknown as WotpUser | null) ?? null
   );
   const [saving, setSaving] = React.useState(false);
 
@@ -41,7 +41,7 @@ function ProfileFormCard() {
       try {
         await pbUsers().update(currentId, { name: value.name.trim() });
         await pbUsers().authRefresh();
-        const updated = pb.authStore.record as unknown as WaotpUser | null;
+        const updated = pb.authStore.record as unknown as WotpUser | null;
         setUser(updated);
         toast.success('Profile name updated');
       } catch (err: unknown) {
@@ -55,14 +55,14 @@ function ProfileFormCard() {
   });
 
   React.useEffect(() => {
-    const record = pb.authStore.record as unknown as WaotpUser | null;
+    const record = pb.authStore.record as unknown as WotpUser | null;
     if (record) {
       setUser(record);
       form.reset({ name: record.name ?? '' });
     }
 
     const unsub = pb.authStore.onChange((_token, model) => {
-      const updated = model as unknown as WaotpUser | null;
+      const updated = model as unknown as WotpUser | null;
       setUser(updated);
       if (updated) {
         form.reset({ name: updated.name ?? '' });
@@ -305,16 +305,16 @@ function GatewayPreferencesCard() {
 }
 
 function UserSidebarCard({ onSignOut }: { onSignOut: () => void }) {
-  const [user, setUser] = React.useState<WaotpUser | null>(
-    (pb.authStore.record as unknown as WaotpUser | null) ?? null
+  const [user, setUser] = React.useState<WotpUser | null>(
+    (pb.authStore.record as unknown as WotpUser | null) ?? null
   );
 
   React.useEffect(() => {
-    const record = pb.authStore.record as unknown as WaotpUser | null;
+    const record = pb.authStore.record as unknown as WotpUser | null;
     if (record) setUser(record);
 
     const unsub = pb.authStore.onChange((_token, model) => {
-      setUser(model as unknown as WaotpUser | null);
+      setUser(model as unknown as WotpUser | null);
     });
     return () => unsub();
   }, []);

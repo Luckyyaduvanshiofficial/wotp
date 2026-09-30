@@ -143,7 +143,7 @@ def test_failed_delivery_never_consumes_quota(client, monkeypatch):
     fake.records["settings"]["set1"]["meta_token_enc"] = encrypt_secret("REALMETA")
 
     # turn mock delivery off for this test and force a Meta failure
-    monkeypatch.setenv("WAOTP_MOCK_DELIVERY", "0")
+    monkeypatch.setenv("WOTP_MOCK_DELIVERY", "0")
     get_settings.cache_clear()
 
     async def boom(*args, **kwargs):
@@ -187,7 +187,7 @@ def test_send_auth_errors(client):
     add_developer(fake)
 
     assert send(client=c, headers={}).status_code == 401
-    assert send(client=c, headers={"X-Api-Key": "waotp_wrong"}).status_code == 401
+    assert send(client=c, headers={"X-Api-Key": "wotp_wrong"}).status_code == 401
 
     fake.records["api_keys"]["key1"]["active"] = False
     from app import dependencies
@@ -358,7 +358,7 @@ def test_ip_rate_limit_applies_to_invented_keys(client):
     from app.services.settings import invalidate_settings_cache
     invalidate_settings_cache()
 
-    hdrs = {"X-Api-Key": "waotp_0000000000000000000000000000000000000000"}
+    hdrs = {"X-Api-Key": "wotp_0000000000000000000000000000000000000000"}
     assert send(client=c, headers=hdrs).status_code == 401
     assert send(client=c, headers=hdrs).status_code == 401
     assert send(client=c, headers=hdrs).status_code == 429
@@ -379,7 +379,7 @@ def test_unknown_api_key_is_negatively_cached(client, monkeypatch):
 
     monkeypatch.setattr(fake, "list", counting_list)
 
-    bad = {"X-Api-Key": "waotp_this-key-does-not-exist-00000000000"}
+    bad = {"X-Api-Key": "wotp_this-key-does-not-exist-00000000000"}
     for _ in range(4):
         assert send(client=c, headers=bad).status_code == 401
     assert len(lookups) == 1
@@ -449,7 +449,7 @@ def test_telegram_not_linked_then_linked(client):
     assert r.status_code == 409
     body = r.json()
     assert body["error"] == "user_not_linked"
-    assert body["link_url"].startswith("https://t.me/waotp_test_bot?start=")
+    assert body["link_url"].startswith("https://t.me/wotp_test_bot?start=")
     assert not fake.records["messages"]  # nothing sent, nothing logged as sent
 
     # user links via the bot -> tg_links row appears
@@ -577,7 +577,7 @@ def test_concurrent_sends_cannot_exceed_quota(client, monkeypatch):
     fake.records["settings"]["set1"]["meta_phone_number_id"] = "PN123"
     fake.records["settings"]["set1"]["meta_token_enc"] = encrypt_secret("REALMETA")
 
-    monkeypatch.setenv("WAOTP_MOCK_DELIVERY", "0")
+    monkeypatch.setenv("WOTP_MOCK_DELIVERY", "0")
     get_settings.cache_clear()
 
     async def slow_send(*args, **kwargs):
@@ -621,7 +621,7 @@ def test_two_keys_of_one_owner_cannot_double_spend_quota(client, monkeypatch):
     c, fake = client
     add_developer(fake)
 
-    second_key = "waotp_secondkey000000000000000000000000000"
+    second_key = "wotp_secondkey000000000000000000000000000"
     fake.records["api_keys"]["key2"] = {
         "id": "key2", "owner": "usr1", "key_hash": sha256_hex(second_key),
         "last4": second_key[-4:], "label": "second", "active": True,
@@ -630,7 +630,7 @@ def test_two_keys_of_one_owner_cannot_double_spend_quota(client, monkeypatch):
     fake.records["settings"]["set1"]["meta_phone_number_id"] = "PN123"
     fake.records["settings"]["set1"]["meta_token_enc"] = encrypt_secret("REALMETA")
 
-    monkeypatch.setenv("WAOTP_MOCK_DELIVERY", "0")
+    monkeypatch.setenv("WOTP_MOCK_DELIVERY", "0")
     get_settings.cache_clear()
 
     async def slow_send(*args, **kwargs):
@@ -671,7 +671,7 @@ def test_two_keys_of_one_owner_share_the_phone_throttle(client, monkeypatch):
     c, fake = client
     add_developer(fake)
 
-    second_key = "waotp_secondkey000000000000000000000000001"
+    second_key = "wotp_secondkey000000000000000000000000001"
     fake.records["api_keys"]["key2"] = {
         "id": "key2", "owner": "usr1", "key_hash": sha256_hex(second_key),
         "last4": second_key[-4:], "label": "second", "active": True,
@@ -682,7 +682,7 @@ def test_two_keys_of_one_owner_share_the_phone_throttle(client, monkeypatch):
     fake.records["settings"]["set1"]["meta_phone_number_id"] = "PN123"
     fake.records["settings"]["set1"]["meta_token_enc"] = encrypt_secret("REALMETA")
 
-    monkeypatch.setenv("WAOTP_MOCK_DELIVERY", "0")
+    monkeypatch.setenv("WOTP_MOCK_DELIVERY", "0")
     get_settings.cache_clear()
 
     async def slow_send(*args, **kwargs):
@@ -802,7 +802,7 @@ def test_delivery_failed_retryable_on_meta_timeout(client, monkeypatch):
 
     fake.records["settings"]["set1"]["meta_phone_number_id"] = "PN123"
     fake.records["settings"]["set1"]["meta_token_enc"] = encrypt_secret("REALMETA")
-    monkeypatch.setenv("WAOTP_MOCK_DELIVERY", "0")
+    monkeypatch.setenv("WOTP_MOCK_DELIVERY", "0")
     get_settings.cache_clear()
 
     async def timeout(*args, **kwargs):
@@ -826,7 +826,7 @@ def test_delivery_failed_retryable_on_telegram_timeout(client, monkeypatch):
     fake.records["tg_links"]["link1"] = {
         "id": "link1", "phone": "919876543210", "chat_id": "777", "tg_user_id": "555",
     }
-    monkeypatch.setenv("WAOTP_MOCK_DELIVERY", "0")
+    monkeypatch.setenv("WOTP_MOCK_DELIVERY", "0")
     get_settings.cache_clear()
 
     async def timeout(*args, **kwargs):
@@ -863,7 +863,7 @@ def test_ledger_write_failure_returns_502_and_logs(client, monkeypatch, caplog):
         return await original_create(self, collection, data)
 
     monkeypatch.setattr(FakePB, "create", create_fails)
-    with caplog.at_level(logging.CRITICAL, logger="waotp"):
+    with caplog.at_level(logging.CRITICAL, logger="wotp"):
         r = send(client=c)
     assert r.status_code == 502
     body = r.json()
@@ -894,7 +894,7 @@ def test_post_delivery_ledger_failure_is_replayed_not_resent(client, monkeypatch
     add_developer(fake)
     fake.records["settings"]["set1"]["meta_phone_number_id"] = "PN123"
     fake.records["settings"]["set1"]["meta_token_enc"] = encrypt_secret("REALMETA")
-    monkeypatch.setenv("WAOTP_MOCK_DELIVERY", "0")
+    monkeypatch.setenv("WOTP_MOCK_DELIVERY", "0")
     get_settings.cache_clear()
 
     delivered = []
@@ -915,7 +915,7 @@ def test_post_delivery_ledger_failure_is_replayed_not_resent(client, monkeypatch
     monkeypatch.setattr(FakePB, "create", create_fails)
 
     hdrs = {**AUTH, "Idempotency-Key": "order-42"}
-    with caplog.at_level(logging.CRITICAL, logger="waotp"):
+    with caplog.at_level(logging.CRITICAL, logger="wotp"):
         first = send(client=c, headers=hdrs)
         second = send(client=c, headers=hdrs)
 
@@ -942,7 +942,7 @@ def test_post_delivery_transport_failure_is_not_a_503(client, monkeypatch):
     add_developer(fake)
     fake.records["settings"]["set1"]["meta_phone_number_id"] = "PN123"
     fake.records["settings"]["set1"]["meta_token_enc"] = encrypt_secret("REALMETA")
-    monkeypatch.setenv("WAOTP_MOCK_DELIVERY", "0")
+    monkeypatch.setenv("WOTP_MOCK_DELIVERY", "0")
     get_settings.cache_clear()
 
     async def fake_send(*args, **kwargs):
@@ -974,7 +974,7 @@ def test_provider_rejection_is_still_retryable_and_uncached(client, monkeypatch)
     add_developer(fake)
     fake.records["settings"]["set1"]["meta_phone_number_id"] = "PN123"
     fake.records["settings"]["set1"]["meta_token_enc"] = encrypt_secret("REALMETA")
-    monkeypatch.setenv("WAOTP_MOCK_DELIVERY", "0")
+    monkeypatch.setenv("WOTP_MOCK_DELIVERY", "0")
     get_settings.cache_clear()
 
     attempts = []

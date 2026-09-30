@@ -14,7 +14,7 @@ import re
 from ..core.config import get_settings
 from .base import ProviderError, ProviderStatus, WebhookEvent
 
-logger = logging.getLogger("waotp")
+logger = logging.getLogger("wotp")
 
 _TIMEOUT = 15.0
 
