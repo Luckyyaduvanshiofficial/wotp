@@ -351,8 +351,87 @@ def test_a_rejected_filter_value_never_becomes_a_5xx(client, monkeypatch):
     assert r.json() == {"ok": True, "events": 1, "applied": 0}
 
 
+# ---- the settings row can supply the Meta credentials ----
+
+
+def test_app_secret_from_the_settings_row_is_enforced(client, monkeypatch):
+    """meta_app_secret_enc must actually be used, not just stored — otherwise
+    rotating the secret from the admin UI would leave the webhook verifying
+    against the old env value."""
+    from app.core.security import encrypt_secret
+    from app.services.settings import invalidate_settings_cache
+
+    c, fake = client
+    add_developer(fake)
+    _settings(monkeypatch, META_VERIFY_TOKEN=VERIFY_TOKEN, META_APP_SECRET="")
+
+    row_secret = "secret-from-the-settings-row"
+    fake.records["settings"]["set1"]["meta_app_secret_enc"] = encrypt_secret(row_secret)
+    invalidate_settings_cache()
+
+    fake.records["messages"]["m1"] = {
+        "id": "m1", "owner": "usr1", "wa_message_id": "mock-abc123",
+        "channel": "whatsapp", "status": "sent", "error": "",
+    }
+
+    # signed with the row secret: accepted
+    body = json.dumps(_status_payload(status="delivered")).encode()
+    r = c.post("/webhooks/whatsapp", content=body, headers={
+        "Content-Type": "application/json",
+        "X-Hub-Signature-256": _sign(body, row_secret),
+    })
+    assert r.status_code == 200
+    assert r.json()["applied"] == 1
+
+    # unsigned: rejected, because a secret is now configured
+    assert _post(c, _status_payload(status="read"), secret=None).status_code == 403
+
+
+def test_verify_token_from_the_settings_row_completes_the_handshake(client, monkeypatch):
+    """meta_verify_token was read by the merge but never existed as a collection
+    field, so setting it in the admin UI silently did nothing."""
+    from app.services.settings import invalidate_settings_cache
+
+    c, fake = client
+    _settings(monkeypatch, META_VERIFY_TOKEN="")
+
+    fake.records["settings"]["set1"]["meta_verify_token"] = "row-verify-token"
+    invalidate_settings_cache()
+
+    r = c.get("/webhooks/whatsapp", params={
+        "hub.mode": "subscribe",
+        "hub.verify_token": "row-verify-token",
+        "hub.challenge": "1158201444",
+    })
+    assert r.status_code == 200
+    assert r.text == "1158201444"
+
+    # a wrong token is still a rejection
+    bad = c.get("/webhooks/whatsapp", params={
+        "hub.mode": "subscribe",
+        "hub.verify_token": "nope",
+        "hub.challenge": "1158201444",
+    })
+    assert bad.status_code == 403
+
+
+def test_health_ready_reports_the_merged_webhook_state(client, monkeypatch):
+    """It must report what the app will actually do, not what env says."""
+    from app.core.security import encrypt_secret
+    from app.services.settings import invalidate_settings_cache
+
+    c, fake = client
+    _settings(monkeypatch, META_VERIFY_TOKEN="", META_APP_SECRET="")
+    fake.records["settings"]["set1"]["meta_app_secret_enc"] = encrypt_secret("row-secret")
+    fake.records["settings"]["set1"]["meta_verify_token"] = "row-verify-token"
+    invalidate_settings_cache()
+
+    body = c.get("/health/ready").json()
+    assert body["webhook"]["signature_check_enabled"] is True
+    assert body["webhook"]["verify_token_configured"] is True
+
+
 def test_production_requires_app_secret_when_whatsapp_is_configured():
-    """Production must not boot with WhatsApp configured and unsigned callbacks."""
     from app.core.config import Settings
 
     base = dict(

@@ -272,8 +272,10 @@ seed row is only created when empty.
 **Public signup is off.** The `waotp_users` collection is created with
 `createRule = null`, so nobody can register against your installation — not
 through the dashboard, and not by calling PocketBase directly. Create operator
-accounts with `scripts/create_admin.py` or the PB admin UI. `ALLOW_SIGNUP=true`
-reopens it deliberately for a shared team instance.
+accounts with `scripts/create_admin.py` or the PB admin UI. To open signup
+deliberately (a shared team instance), edit the collection's **Create rule** in
+the PocketBase admin UI — there is no env flag for it, because the create rule
+is what actually decides and a flag that claimed otherwise could only mislead.
 
 ## Tests
 

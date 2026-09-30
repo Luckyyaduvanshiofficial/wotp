@@ -66,8 +66,6 @@ services:
       # weakens security, which is worse than not booting.
       - key: APP_ENV
         value: production
-      - key: ALLOW_SIGNUP
-        value: 'false'
       # Must stay '0' in production: '1' fakes provider delivery while keeping
       # every DB row real. Useful locally; a silent outage in production.
       - key: WAOTP_MOCK_DELIVERY

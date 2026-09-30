@@ -24,9 +24,9 @@ import logging
 from fastapi import APIRouter, Header, Request
 from fastapi.responses import JSONResponse, PlainTextResponse
 
-from ..core.config import get_settings
 from ..providers import build_whatsapp_provider
 from ..services.pocketbase import PocketBaseError, pb_literal, wa_collection
+from ..services.settings import get_app_settings
 
 router = APIRouter(tags=["whatsapp"])
 logger = logging.getLogger("waotp")
@@ -55,7 +55,12 @@ async def verify(request: Request):
     token = params.get("hub.verify_token", "")
     challenge = params.get("hub.challenge", "")
 
-    configured = get_settings().meta_verify_token
+    # Merged config, not get_settings(): the operator may set the verify token
+    # in the PocketBase settings row, and reading env directly would silently
+    # ignore it (and reject every handshake). Falls back to env when the control
+    # plane is unreachable.
+    cfg = await get_app_settings(request.app.state.pb)
+    configured = cfg["meta_verify_token"]
     if not configured:
         logger.warning(
             "webhook handshake rejected: META_VERIFY_TOKEN is not set, so Meta "
@@ -86,7 +91,10 @@ async def receive(
     development where the operator has not created a full Meta app yet.
     """
     raw = await request.body()
-    provider = build_whatsapp_provider()
+    # Merged config so the operator can rotate the app secret from the admin UI;
+    # falls back to env when the control plane is unreachable.
+    cfg = await get_app_settings(request.app.state.pb)
+    provider = build_whatsapp_provider(cfg)
 
     if not provider.verify_signature(raw, x_hub_signature_256):
         logger.warning("whatsapp webhook rejected: invalid X-Hub-Signature-256")

@@ -79,10 +79,12 @@ async def ready(request: Request):
             ),
         },
         "webhook": {
-            # These two make the Meta subscription work; their absence is the
-            # most common reason a new install never receives status callbacks.
-            "verify_token_configured": bool(env.meta_verify_token),
-            "signature_check_enabled": bool(env.meta_app_secret),
+            # Read from the MERGED config, not env: both of these can be set in
+            # the PocketBase settings row, and reporting the env value while the
+            # app used the row value (or the reverse) would make this endpoint
+            # lie about the state it exists to report.
+            "verify_token_configured": bool(cfg.get("meta_verify_token")),
+            "signature_check_enabled": bool(cfg.get("meta_app_secret")),
         },
         "mock_delivery": env.waotp_mock_delivery,
     }

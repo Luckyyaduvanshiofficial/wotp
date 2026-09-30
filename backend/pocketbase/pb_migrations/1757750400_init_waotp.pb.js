@@ -232,6 +232,12 @@ migrate((app) => {
       { name: "meta_phone_number_id", type: "text", max: 64 },
       // Fernet-encrypted at rest; even a PB dump should not leak the Meta token.
       { name: "meta_token_enc", type: "text", max: 500 },
+      // Also encrypted: this verifies inbound webhook signatures, so leaking it
+      // would let an attacker forge delivery-status callbacks.
+      { name: "meta_app_secret_enc", type: "text", max: 500 },
+      // Echoed back during Meta's subscription handshake. Read from the merged
+      // config, so setting it here works without a redeploy.
+      { name: "meta_verify_token", type: "text", max: 128 },
       { name: "meta_template", type: "text", max: 64 },
       { name: "meta_template_lang", type: "text", max: 16 },
       { name: "tg_bot_token", type: "text", max: 128 },

@@ -68,11 +68,12 @@ class Settings(BaseSettings):
     # Telegram credentials. Must be false in production.
     waotp_mock_delivery: bool = False
 
-    # Public signup for the dashboard. Off by default: this is an
-    # operator-owned installation, and an open signup form would let any
-    # visitor mint an API key against the operator's WhatsApp account.
-    # Turn on only for a deliberately shared team instance.
-    allow_signup: bool = False
+    # NOTE: there is deliberately no ALLOW_SIGNUP setting here. Whether an
+    # account can be self-registered is decided by the PocketBase auth
+    # collection's create rule, which this process does not own — an env flag
+    # would be a knob that reports success while the collection still refuses
+    # the write, or worse, one that reports safety while it does not. Accounts
+    # are created with scripts/create_admin.py; see docs/self-hosting.md.
 
     # --- WhatsApp provider ---------------------------------------------------
     # Which provider implementation delivers WhatsApp OTPs. Only `meta` exists

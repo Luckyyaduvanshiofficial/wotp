@@ -69,6 +69,10 @@ SELF_UPDATE_RULE = (
 SEED_SETTINGS = {
     "meta_phone_number_id": "",
     "meta_token_enc": "",
+    # Encrypted at rest like the token: it authenticates inbound webhook calls,
+    # so a dump of this row must not hand an attacker the ability to forge them.
+    "meta_app_secret_enc": "",
+    "meta_verify_token": "",
     "meta_template": "verification_code",
     "meta_template_lang": "en_US",
     "tg_bot_token": "",
@@ -203,6 +207,10 @@ def collection_payload(logical: str, physical: str, ids: dict[str, str]) -> dict
             {"name": "meta_phone_number_id", "type": "text", "max": 64},
             # Fernet-encrypted at rest; even a PB dump should not leak the Meta token.
             {"name": "meta_token_enc", "type": "text", "max": 500},
+            # Also encrypted: this one verifies inbound webhook signatures, so
+            # leaking it would let an attacker forge delivery-status callbacks.
+            {"name": "meta_app_secret_enc", "type": "text", "max": 500},
+            {"name": "meta_verify_token", "type": "text", "max": 128},
             {"name": "meta_template", "type": "text", "max": 64},
             {"name": "meta_template_lang", "type": "text", "max": 16},
             {"name": "tg_bot_token", "type": "text", "max": 128},

@@ -34,14 +34,23 @@ async def get_app_settings(pb) -> dict:
     except Exception:
         row = {}
 
-    # Operator-set encrypted token wins when present; otherwise the env value.
+    # Operator-set encrypted secrets win when present; otherwise the env value.
+    # Both of these are credentials the operator can rotate from the admin UI,
+    # which only works if every reader goes through this merged dict — a reader
+    # that called get_settings() directly would silently ignore the row.
     meta_token = ""
     if row.get("meta_token_enc"):
         meta_token = decrypt_secret(row["meta_token_enc"]) or ""
+    meta_app_secret = ""
+    if row.get("meta_app_secret_enc"):
+        meta_app_secret = decrypt_secret(row["meta_app_secret_enc"]) or ""
 
     data = {
         "meta_phone_number_id": row.get("meta_phone_number_id") or env.meta_phone_number_id,
         "meta_token": meta_token or env.meta_access_token,
+        # Verifies inbound webhook signatures. Empty means unsigned callbacks
+        # are accepted, which is why production refuses to boot without it.
+        "meta_app_secret": meta_app_secret or env.meta_app_secret,
         "meta_verify_token": row.get("meta_verify_token") or env.meta_verify_token,
         "meta_template": row.get("meta_template") or env.meta_template,
         "meta_template_lang": row.get("meta_template_lang") or env.meta_template_lang,
