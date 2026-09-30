@@ -93,12 +93,7 @@ export function SidebarUser() {
           >
             <Icons.chevronsDown className='size-4' />
           </DropdownMenuTrigger>
-          <DropdownMenuContent
-            className='w-56 rounded-lg'
-            side='top'
-            align='end'
-            sideOffset={6}
-          >
+          <DropdownMenuContent className='w-56 rounded-lg' side='top' align='end' sideOffset={6}>
             <DropdownMenuLabel className='p-0 font-normal'>
               <div className='flex items-center gap-2 px-2 py-1.5 text-left text-sm'>
                 <Avatar className='size-7 rounded-md'>
@@ -128,10 +123,7 @@ export function SidebarUser() {
                 <Icons.key className='mr-2 size-4' />
                 <span>API Keys</span>
               </DropdownMenuItem>
-              <DropdownMenuItem
-                onClick={() => router.push('/docs')}
-                className='cursor-pointer'
-              >
+              <DropdownMenuItem onClick={() => router.push('/docs')} className='cursor-pointer'>
                 <Icons.book className='mr-2 size-4' />
                 <span>Documentation</span>
               </DropdownMenuItem>

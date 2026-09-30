@@ -201,7 +201,11 @@ export default function LandingPage() {
           </div>
         </section>
 
-        <section className='lm-section' id='meta-requirements' aria-labelledby='meta-requirements-h'>
+        <section
+          className='lm-section'
+          id='meta-requirements'
+          aria-labelledby='meta-requirements-h'
+        >
           <div className='lm-head'>
             <p className='lm-eyebrow'>04 · what meta will ask you for</p>
             <h2 className='lm-h2' id='meta-requirements-h'>

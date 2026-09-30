@@ -136,7 +136,11 @@ export function OnboardingView() {
         )}
       </Card>
 
-      <Step n={1} title='Get your own WhatsApp Business account (or skip to Telegram)' state='uncheckable'>
+      <Step
+        n={1}
+        title='Get your own WhatsApp Business account (or skip to Telegram)'
+        state='uncheckable'
+      >
         <p className='text-muted-foreground'>
           Meta requires government business documents, an international credit card, a dedicated
           phone number and an approved authentication template before a production number can send
@@ -269,8 +273,8 @@ export function OnboardingView() {
       </Step>
 
       <p className='text-muted-foreground text-sm'>
-        Tunable numbers — code length, expiry, attempts, throttles and the monthly send cap — live in
-        the <code>settings</code> row of your own PocketBase, editable without a redeploy. See{' '}
+        Tunable numbers — code length, expiry, attempts, throttles and the monthly send cap — live
+        in the <code>settings</code> row of your own PocketBase, editable without a redeploy. See{' '}
         <Link href='/dashboard/settings' className='text-primary underline underline-offset-4'>
           Settings
         </Link>

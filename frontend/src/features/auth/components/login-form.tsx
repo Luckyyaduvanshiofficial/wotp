@@ -51,7 +51,12 @@ export function LoginForm() {
             name='email'
             children={(field) => (
               <div>
-                <field.TextField label='Email' type='email' placeholder='you@example.com' required />
+                <field.TextField
+                  label='Email'
+                  type='email'
+                  placeholder='you@example.com'
+                  required
+                />
                 {TEMP_MAIL_ENABLED && (
                   <p className='mt-1.5 text-xs text-muted-foreground'>
                     Testing the dashboard?{' '}

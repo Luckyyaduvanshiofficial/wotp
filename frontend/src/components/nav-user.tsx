@@ -97,10 +97,7 @@ export function NavUser({
                 <Icons.badgeCheck className='mr-2 h-4 w-4' />
                 Setup Guide
               </DropdownMenuItem>
-              <DropdownMenuItem
-                onClick={() => router.push('/docs')}
-                className='cursor-pointer'
-              >
+              <DropdownMenuItem onClick={() => router.push('/docs')} className='cursor-pointer'>
                 <Icons.book className='mr-2 h-4 w-4' />
                 Documentation
               </DropdownMenuItem>

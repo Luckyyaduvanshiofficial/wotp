@@ -17,15 +17,14 @@ export function TempMailPromo() {
         </div>
         <div className='flex-1 min-w-0'>
           <div className='flex flex-wrap items-center justify-between gap-1'>
-            <span className='text-xs font-semibold text-foreground'>
-              Test with Temp Mail
-            </span>
+            <span className='text-xs font-semibold text-foreground'>Test with Temp Mail</span>
             <span className='rounded bg-sky-500/15 px-1.5 py-0.5 font-mono text-[10px] font-medium text-sky-600 dark:text-sky-400'>
               Instant &amp; Free
             </span>
           </div>
           <p className='mt-1 text-[11.5px] leading-relaxed text-muted-foreground'>
-            Testing this dashboard? Use a free disposable inbox on Temp Mail to test without using your real email.
+            Testing this dashboard? Use a free disposable inbox on Temp Mail to test without using
+            your real email.
           </p>
           <div className='mt-2'>
             <a

@@ -81,7 +81,10 @@ function UsageCard() {
           <CardTitle className='text-xs sm:text-sm font-medium text-muted-foreground'>
             Monthly WhatsApp Sends
           </CardTitle>
-          <Badge variant={capped && pct >= 100 ? 'destructive' : 'secondary'} className='text-[11px]'>
+          <Badge
+            variant={capped && pct >= 100 ? 'destructive' : 'secondary'}
+            className='text-[11px]'
+          >
             {capped ? 'capped' : 'no cap'}
           </Badge>
         </div>
@@ -99,7 +102,9 @@ function UsageCard() {
           <>
             <Progress value={pct} aria-label={`${pct}% of monthly send cap used`} className='h-2' />
             <div className='mt-3 flex flex-wrap items-center justify-between gap-1 text-[11px] sm:text-xs text-muted-foreground'>
-              <span>Resets on <strong className='text-foreground font-medium'>{resetLabel}</strong></span>
+              <span>
+                Resets on <strong className='text-foreground font-medium'>{resetLabel}</strong>
+              </span>
               <span className='font-mono'>{pct}% used</span>
             </div>
           </>
@@ -127,7 +132,10 @@ function TelegramChannelCard() {
             <Icons.telegram className='size-4 text-sky-500' />
             Telegram OTP Channel
           </CardTitle>
-          <Badge variant='outline' className='border-sky-500/30 bg-sky-500/10 text-sky-600 dark:text-sky-400 text-[11px]'>
+          <Badge
+            variant='outline'
+            className='border-sky-500/30 bg-sky-500/10 text-sky-600 dark:text-sky-400 text-[11px]'
+          >
             Free Forever
           </Badge>
         </div>
@@ -183,7 +191,9 @@ function KeysCountCard() {
       </CardHeader>
       <CardContent className='p-4 sm:p-6 pt-0'>
         <p className='text-muted-foreground text-xs leading-relaxed'>
-          Pass your secret key in the <code className='text-[11px] font-mono bg-muted px-1 py-0.5 rounded'>X-Api-Key</code> header.
+          Pass your secret key in the{' '}
+          <code className='text-[11px] font-mono bg-muted px-1 py-0.5 rounded'>X-Api-Key</code>{' '}
+          header.
         </p>
         <div className='mt-3'>
           <Link
@@ -208,7 +218,10 @@ function SandboxPromoCard() {
             <Icons.flask className='size-4 text-primary' />
             Interactive OTP Tester
           </CardTitle>
-          <Badge variant='outline' className='border-primary/30 bg-primary/10 text-primary text-[11px]'>
+          <Badge
+            variant='outline'
+            className='border-primary/30 bg-primary/10 text-primary text-[11px]'
+          >
             Sandbox
           </Badge>
         </div>
@@ -377,8 +390,9 @@ function InstallationStatusCard() {
               Mock Delivery is Active
             </p>
             <p className='mt-1 text-xs text-muted-foreground leading-relaxed'>
-              Sends are simulated: database records are written but no WhatsApp or Telegram message leaves this host.
-              Set <code>WAOTP_MOCK_DELIVERY=0</code> and restart containers to enable live delivery.
+              Sends are simulated: database records are written but no WhatsApp or Telegram message
+              leaves this host. Set <code>WAOTP_MOCK_DELIVERY=0</code> and restart containers to
+              enable live delivery.
             </p>
           </div>
         ) : null}
@@ -404,19 +418,37 @@ function InstallationStatusCard() {
 
         <div className='rounded-lg border bg-muted/40 p-3.5 space-y-2'>
           <div className='flex items-center justify-between gap-2'>
-            <p className='text-xs font-semibold text-foreground uppercase tracking-wider'>Meta Webhook Integration</p>
+            <p className='text-xs font-semibold text-foreground uppercase tracking-wider'>
+              Meta Webhook Integration
+            </p>
             <span className='text-[11px] text-muted-foreground font-mono'>Inbound Callbacks</span>
           </div>
           <dl className='space-y-1.5 text-xs text-muted-foreground'>
             <div className='flex flex-wrap items-center justify-between gap-2'>
               <dt>Verify Token</dt>
-              <dd className={cn('font-medium', webhook.verify_token_configured ? 'text-emerald-600 dark:text-emerald-400' : 'text-amber-500')}>
-                {webhook.verify_token_configured ? '✓ configured' : '✗ not set — Meta cannot subscribe'}
+              <dd
+                className={cn(
+                  'font-medium',
+                  webhook.verify_token_configured
+                    ? 'text-emerald-600 dark:text-emerald-400'
+                    : 'text-amber-500'
+                )}
+              >
+                {webhook.verify_token_configured
+                  ? '✓ configured'
+                  : '✗ not set — Meta cannot subscribe'}
               </dd>
             </div>
             <div className='flex flex-wrap items-center justify-between gap-2'>
               <dt>Signature Verification</dt>
-              <dd className={cn('font-medium', webhook.signature_check_enabled ? 'text-emerald-600 dark:text-emerald-400' : 'text-amber-500')}>
+              <dd
+                className={cn(
+                  'font-medium',
+                  webhook.signature_check_enabled
+                    ? 'text-emerald-600 dark:text-emerald-400'
+                    : 'text-amber-500'
+                )}
+              >
                 {webhook.signature_check_enabled
                   ? '✓ enabled (SHA-256 HMAC)'
                   : '✗ disabled — set META_APP_SECRET to verify callbacks'}
@@ -449,7 +481,8 @@ function FirstRunChecklistCard() {
           </Badge>
         </div>
         <CardDescription className='text-xs mt-1 leading-relaxed'>
-          Follow 7 step-by-step instructions to configure Meta Cloud API, Telegram bot, webhook endpoints, and dispatch your first verified OTP.
+          Follow 7 step-by-step instructions to configure Meta Cloud API, Telegram bot, webhook
+          endpoints, and dispatch your first verified OTP.
         </CardDescription>
       </CardHeader>
       <CardContent className='p-4 sm:p-6 pt-0 space-y-3'>
@@ -471,7 +504,10 @@ function FirstRunChecklistCard() {
       <CardFooter className='p-4 sm:p-6 pt-0 border-t bg-muted/10'>
         <Link
           href='/dashboard/onboarding'
-          className={cn(buttonVariants({ variant: 'outline', size: 'sm' }), 'w-full text-xs font-medium')}
+          className={cn(
+            buttonVariants({ variant: 'outline', size: 'sm' }),
+            'w-full text-xs font-medium'
+          )}
         >
           <span>Open Setup Checklist</span>
           <Icons.arrowRight className='size-3.5 ml-1.5' />
@@ -644,16 +680,24 @@ function RecentKeysCard() {
           <div className='py-8 text-center text-xs sm:text-sm text-muted-foreground'>
             <Icons.key className='mx-auto size-6 mb-2 text-muted-foreground/50' />
             No API keys created yet.{' '}
-            <Link href='/dashboard/keys' className='text-primary underline underline-offset-4 font-medium'>
+            <Link
+              href='/dashboard/keys'
+              className='text-primary underline underline-offset-4 font-medium'
+            >
               Create your first key
             </Link>
           </div>
         ) : (
           <ul className='divide-y'>
             {data.keys.slice(0, 4).map((k) => (
-              <li key={k.id} className='flex items-center justify-between py-2.5 first:pt-0 last:pb-0 gap-2'>
+              <li
+                key={k.id}
+                className='flex items-center justify-between py-2.5 first:pt-0 last:pb-0 gap-2'
+              >
                 <div className='min-w-0'>
-                  <p className='text-xs sm:text-sm font-medium truncate'>{k.label || 'Unnamed key'}</p>
+                  <p className='text-xs sm:text-sm font-medium truncate'>
+                    {k.label || 'Unnamed key'}
+                  </p>
                   <p className='text-muted-foreground font-mono text-[11px]'>waotp_••••{k.last4}</p>
                 </div>
                 <div className='flex items-center gap-2 shrink-0'>
@@ -669,7 +713,10 @@ function RecentKeysCard() {
       <CardFooter className='p-4 sm:p-6 pt-0 border-t bg-muted/10'>
         <Link
           href='/dashboard/keys'
-          className={cn(buttonVariants({ variant: 'outline', size: 'sm' }), 'w-full text-xs font-medium')}
+          className={cn(
+            buttonVariants({ variant: 'outline', size: 'sm' }),
+            'w-full text-xs font-medium'
+          )}
         >
           <Icons.add className='size-3.5 mr-1.5' />
           Create new key
@@ -693,15 +740,19 @@ function TempMailTipCard() {
             </span>
             Testing with Temp Mail
           </CardTitle>
-          <Badge variant='outline' className='border-sky-500/30 bg-sky-500/10 text-sky-600 dark:text-sky-400 text-[10px]'>
+          <Badge
+            variant='outline'
+            className='border-sky-500/30 bg-sky-500/10 text-sky-600 dark:text-sky-400 text-[10px]'
+          >
             Companion Tool
           </Badge>
         </div>
       </CardHeader>
       <CardContent className='p-4 sm:p-6 pt-0 space-y-2.5'>
         <p className='text-xs text-muted-foreground leading-relaxed'>
-          Testing your application&apos;s registration and authentication flows? Use disposable inboxes on{' '}
-          <strong className='text-foreground font-medium'>{tempMailHost()}</strong> to test without sharing your real email address.
+          Testing your application&apos;s registration and authentication flows? Use disposable
+          inboxes on <strong className='text-foreground font-medium'>{tempMailHost()}</strong> to
+          test without sharing your real email address.
         </p>
         <div>
           <a
