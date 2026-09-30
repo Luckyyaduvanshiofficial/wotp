@@ -162,8 +162,8 @@ export default function LandingPage() {
           </p>
 
           <div className='lm-actions'>
-            <Link href='/signup' className='lm-actions__primary'>
-              start free
+            <Link href='/docs' className='lm-actions__primary'>
+              self-host it
             </Link>
             <Link href='/dashboard/tester' className='lm-actions__ghost'>
               test in sandbox
@@ -351,11 +351,11 @@ export default function LandingPage() {
 
         <section className='lm-section lm-section--close' aria-labelledby='start-h'>
           <h2 className='lm-h2' id='start-h'>
-            sign up and send your first telegram otp, or clone and self-host.
+            clone it and self-host in minutes, or try the sandbox first.
           </h2>
           <div className='lm-actions'>
-            <Link href='/signup' className='lm-actions__primary'>
-              start free
+            <Link href='/docs' className='lm-actions__primary'>
+              self-host it
             </Link>
             <Link href='/dashboard/tester' className='lm-actions__ghost'>
               test in sandbox

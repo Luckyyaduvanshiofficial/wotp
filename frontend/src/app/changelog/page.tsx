@@ -79,8 +79,8 @@ export default function ChangelogPage() {
             with transparency in the open source ecosystem.
           </p>
           <div className='lm-actions'>
-            <Link href='/signup' className='lm-actions__primary'>
-              start free
+            <Link href='/docs' className='lm-actions__primary'>
+              self-host it
             </Link>
             {GITHUB_URL ? (
               <a

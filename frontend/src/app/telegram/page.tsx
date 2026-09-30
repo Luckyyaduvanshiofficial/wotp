@@ -143,8 +143,8 @@ export default function TelegramLandingPage() {
           </p>
 
           <div className='lm-actions'>
-            <Link href='/signup' className='lm-actions__primary'>
-              start free
+            <Link href='/docs' className='lm-actions__primary'>
+              self-host it
             </Link>
             <Link href='/dashboard/tester' className='lm-actions__ghost'>
               test in sandbox
@@ -320,13 +320,14 @@ export default function TelegramLandingPage() {
               start sending unmetered telegram otps today.
             </h2>
             <p className='lm-lede'>
-              Sign up for our hosted platform or clone the repository to self-host on your own
-              infrastructure.
+              Clone the repository and self-host on your own infrastructure, or try the sandbox
+              first. There is no hosted account to create — the software runs on your machine, with
+              your own Telegram bot.
             </p>
           </div>
           <div className='lm-actions'>
-            <Link href='/signup' className='lm-actions__primary'>
-              create free account
+            <Link href='/docs' className='lm-actions__primary'>
+              self-host it
             </Link>
             <Link href='/dashboard/tester' className='lm-actions__ghost'>
               launch otp sandbox
