@@ -25,8 +25,6 @@ import { Label } from '@/components/ui/label';
 import { LoadingButton } from '@/components/ui/loading-button';
 import { cn } from '@/lib/utils';
 
-const TESTER_KEY_STORAGE = 'waotp_tester_key';
-
 function cleanAndNormalizePhone(raw: string): string {
   let digits = raw.replace(/[^\d]/g, '');
   if (digits.length === 11 && digits.startsWith('0')) {
@@ -52,10 +50,7 @@ function JsonBlock({
     <div className='overflow-hidden rounded-lg border bg-muted/40 text-xs sm:text-[13px]'>
       <div className='flex items-center justify-between border-b bg-muted/70 px-3 py-1.5 text-xs'>
         <span
-          className={cn(
-            'font-mono font-medium',
-            isError ? 'text-destructive' : 'text-foreground'
-          )}
+          className={cn('font-mono font-medium', isError ? 'text-destructive' : 'text-foreground')}
         >
           {label}
         </span>
@@ -63,9 +58,7 @@ function JsonBlock({
           <span className='ml-1 text-[11px]'>Copy JSON</span>
         </CopyButton>
       </div>
-      <pre className='max-h-60 sm:max-h-72 overflow-auto p-3 font-mono leading-relaxed'>
-        {text}
-      </pre>
+      <pre className='max-h-60 sm:max-h-72 overflow-auto p-3 font-mono leading-relaxed'>{text}</pre>
     </div>
   );
 }
@@ -93,36 +86,21 @@ export function TesterView() {
   // cURL preview tab state
   const [curlTab, setCurlTab] = React.useState<'send' | 'verify'>('send');
 
-  // Load key from sessionStorage handoff or localStorage
+  // The key is never persisted. It arrives from the keys page as an in-memory
+  // handoff (lib/key-handoff.ts) and lives in this component's state until the
+  // tab is closed or the user clears it.
   React.useEffect(() => {
     const handoff = takePlaintextKey();
-    if (handoff?.api_key) {
-      setApiKey(handoff.api_key);
-      try {
-        localStorage.setItem(TESTER_KEY_STORAGE, handoff.api_key);
-      } catch {}
-      return;
-    }
-
-    try {
-      const saved = localStorage.getItem(TESTER_KEY_STORAGE);
-      if (saved) setApiKey(saved);
-    } catch {}
+    if (handoff?.api_key) setApiKey(handoff.api_key);
   }, []);
 
   function handleApiKeyChange(val: string) {
     setApiKey(val);
-    try {
-      localStorage.setItem(TESTER_KEY_STORAGE, val.trim());
-    } catch {}
   }
 
   function handleClearApiKey() {
     setApiKey('');
-    try {
-      localStorage.removeItem(TESTER_KEY_STORAGE);
-    } catch {}
-    toast.info('API key cleared');
+    toast.info('API key cleared from this tab');
   }
 
   async function handleQuickGenerateKey() {
@@ -130,9 +108,6 @@ export function TesterView() {
     try {
       const created = await createKey('Tester Quick Key');
       setApiKey(created.api_key);
-      try {
-        localStorage.setItem(TESTER_KEY_STORAGE, created.api_key);
-      } catch {}
       toast.success('New API key generated and loaded!');
     } catch (e) {
       toast.error(errorMessage(e));
@@ -266,19 +241,27 @@ export function TesterView() {
   const sendCurl = `curl -X POST "${API_URL}/v1/otp/send" \\
   -H "X-Api-Key: ${effectiveKey}" \\
   -H "Content-Type: application/json" \\
-  -d '${JSON.stringify({
-    to: effectivePhone,
-    channel,
-    ...(customCode.trim() ? { code: customCode.trim() } : {})
-  }, null, 2)}'`;
+  -d '${JSON.stringify(
+    {
+      to: effectivePhone,
+      channel,
+      ...(customCode.trim() ? { code: customCode.trim() } : {})
+    },
+    null,
+    2
+  )}'`;
 
   const verifyCurl = `curl -X POST "${API_URL}/v1/otp/verify" \\
   -H "X-Api-Key: ${effectiveKey}" \\
   -H "Content-Type: application/json" \\
-  -d '${JSON.stringify({
-    to: effectiveVerifyPhone,
-    code: effectiveCode
-  }, null, 2)}'`;
+  -d '${JSON.stringify(
+    {
+      to: effectiveVerifyPhone,
+      code: effectiveCode
+    },
+    null,
+    2
+  )}'`;
 
   return (
     <div className='flex flex-col gap-6'>
@@ -326,8 +309,9 @@ export function TesterView() {
             )}
           </div>
           <CardDescription className='text-xs sm:text-sm'>
-            Your secret API key authenticates both Send and Verify requests. Stored in your browser
-            for continuous testing.
+            Your secret API key authenticates both Send and Verify requests. It is held in this
+            tab&apos;s memory only — never written to browser storage — so reloading the page clears
+            it.
           </CardDescription>
         </CardHeader>
         <CardContent className='p-4 sm:p-6 pt-0 sm:pt-0'>
@@ -350,7 +334,11 @@ export function TesterView() {
                 className='text-muted-foreground hover:text-foreground absolute right-1 top-1/2 -translate-y-1/2 size-8'
                 onClick={() => setShowApiKey((prev) => !prev)}
               >
-                {showApiKey ? <Icons.eyeOff className='size-4' /> : <Icons.eye className='size-4' />}
+                {showApiKey ? (
+                  <Icons.eyeOff className='size-4' />
+                ) : (
+                  <Icons.eye className='size-4' />
+                )}
               </Button>
             </div>
             <div className='flex flex-wrap items-center gap-2'>
@@ -378,7 +366,7 @@ export function TesterView() {
                     size='sm'
                     className='text-muted-foreground hover:text-destructive h-[42px] px-2.5 text-xs'
                     onClick={handleClearApiKey}
-                    title='Clear stored key'
+                    title='Clear the key from this tab'
                   >
                     <Icons.trash className='size-3.5' />
                   </Button>
@@ -472,7 +460,10 @@ export function TesterView() {
 
             {/* Recipient Phone */}
             <div className='grid gap-2'>
-              <Label htmlFor='tester-phone' className='text-xs sm:text-sm font-medium flex items-center gap-1.5'>
+              <Label
+                htmlFor='tester-phone'
+                className='text-xs sm:text-sm font-medium flex items-center gap-1.5'
+              >
                 <Icons.phone className='size-3.5 text-muted-foreground' />
                 Recipient Phone
               </Label>
@@ -539,8 +530,8 @@ export function TesterView() {
                 </AlertTitle>
                 <AlertDescription className='mt-2 flex flex-col gap-3 text-xs sm:text-sm'>
                   <span>
-                    This phone number is not linked to your Telegram account yet. Click below to open
-                    the Telegram bot and pair your number with 1 click:
+                    This phone number is not linked to your Telegram account yet. Click below to
+                    open the Telegram bot and pair your number with 1 click:
                   </span>
                   <a
                     href={telegramLinkUrl}
@@ -601,7 +592,8 @@ export function TesterView() {
               </Badge>
             </div>
             <CardDescription className='text-xs sm:text-sm'>
-              Validate the code entered by the user. Codes are single-use and burn after verification.
+              Validate the code entered by the user. Codes are single-use and burn after
+              verification.
             </CardDescription>
           </CardHeader>
 
@@ -619,7 +611,10 @@ export function TesterView() {
 
             {/* Verify Phone */}
             <div className='grid gap-2'>
-              <Label htmlFor='verify-phone' className='text-xs sm:text-sm font-medium flex items-center gap-1.5'>
+              <Label
+                htmlFor='verify-phone'
+                className='text-xs sm:text-sm font-medium flex items-center gap-1.5'
+              >
                 <Icons.phone className='size-3.5 text-muted-foreground' />
                 Phone Number
               </Label>
