@@ -139,7 +139,7 @@ curl -X POST "$WOTP_API/v1/otp/send" \
 ```
 
 Full walkthrough: [docs/quickstart](frontend/src/app/docs/quickstart/page.tsx) ·
-Step-by-step deployment: [docs/self-hosting.md](docs/self-hosting.md) for a plain server, or [docs/deploy-dokploy.md](docs/deploy-dokploy.md) if you use Dokploy (Compose, three domains, TLS handled by Traefik).
+Step-by-step deployment: [docs/self-hosting.md](docs/self-hosting.md) for a plain server, or [docs/deploy-dokploy.md](docs/deploy-dokploy.md) if you use Dokploy (Compose, three domains, TLS handled by Traefik), or [docs/deploy-dokku.md](docs/deploy-dokku.md) if you deploy with Dokku (three apps, one per service).
 
 ## Documentation
 
@@ -149,6 +149,7 @@ Everything below ships in this repository, so it works offline and in a fresh cl
 |---|---|
 | [docs/self-hosting.md](docs/self-hosting.md) | Docker Compose, TLS, backups that survive a restore drill, upgrades, retention and the production boot checks |
 | [docs/deploy-dokploy.md](docs/deploy-dokploy.md) | Deploying on Dokploy: the Compose file to point it at, the three domains, environment, first-run verification and troubleshooting |
+| [docs/deploy-dokku.md](docs/deploy-dokku.md) | Deploying on Dokku: three apps, why the build context is the repo root, build arguments that must be set before the build |
 | [docs/meta-setup.md](docs/meta-setup.md) | The Meta side in order: business verification, the authentication template, system-user tokens, the webhook |
 | [backend/docs/api.md](backend/docs/api.md) | The full integrator reference: every endpoint, field, error code and the retry decision for each |
 | [backend/README.md](backend/README.md) | Operating the gateway: configuration, cap semantics, the Telegram link flow, the WhatsApp webhook, running it |

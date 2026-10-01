@@ -1,19 +1,34 @@
-# Root .dockerignore — keeps the build context lean for Dokploy.
-node_modules/
-.next/
-.venv/
-__pycache__/
-*.pyc
-.pytest_cache/
+# Root .dockerignore — keeps the build context lean.
+#
+# This file governs EVERY build whose context is the repository root: the API
+# image built from the root Dockerfile, and the dashboard built from
+# Dockerfile.web. Dokku always uses the repository root as the build context, so
+# these patterns are what decide what the daemon receives.
+#
+# Patterns are matched against paths RELATIVE TO THE CONTEXT ROOT, so a bare
+# `node_modules/` excludes only the root one — `frontend/node_modules` needs the
+# `**/` form. That distinction matters here because the dashboard's dependencies
+# are 1.3 GB.
+**/node_modules/
+**/.next/
+**/.venv/
+**/__pycache__/
+**/*.pyc
+**/.pytest_cache/
+**/.turbo/
+**/.swc/
+**/*.tsbuildinfo
+
 .env*
 !.env.example
+!.env.production.example
 !.env.local.example
 .git/
+.gitignore
 .graphify-out/
 graphify-out/
 backend/pocketbase/pb_data/
 backend/pocketbase/pocketbase
-frontend/
 *.md
 !.README.md
 .DS_Store
@@ -22,3 +37,9 @@ frontend/
 .hallmark/
 .zcode/
 .v2c/
+
+# NOTE: `frontend/` used to be excluded here. It was removed because Dokku builds
+# every app with the repository root as its context, so excluding it made a
+# root-context dashboard build impossible — `COPY frontend/package.json` would
+# simply not find the file. The API image is unaffected: its Dockerfile copies
+# only backend/ paths, so the extra frontend/ sources are transferred and ignored.

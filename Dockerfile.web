@@ -1,0 +1,117 @@
+# =============================================================================
+# WOTP dashboard — root-context build for Dokku
+# =============================================================================
+#
+# WHY THIS FILE EXISTS SEPARATELY FROM frontend/Dockerfile
+#
+# Dokku always uses the REPOSITORY ROOT as the Docker build context. Its
+# `builder-dockerfile:set <app> dockerfile-path <path>` option moves where the
+# Dockerfile is READ from, but not the context — so `frontend/Dockerfile`, which
+# says `COPY package.json ./`, cannot work there: it would look for a
+# package.json at the repository root, and the build would fail.
+#
+# This file is the same three-stage build with `frontend/` prefixes, so it works
+# when the context is the root. It is what you point Dokku at:
+#
+#     dokku builder-dockerfile:set wotp-web dockerfile-path Dockerfile.web
+#
+# `frontend/Dockerfile` is still the one Docker Compose uses, because Compose
+# sets its context to `./frontend`. If you change the build steps here, change
+# them there too — they are the same image built two ways.
+#
+# BUILD ARGUMENTS ARE MANDATORY
+#
+# The `NEXT_PUBLIC_*` values are inlined into the browser bundle, so they must be
+# supplied at build time and cannot be changed by restarting the container. On
+# Dokku that takes two commands per variable — a config value, and a build-arg
+# that tells the builder to pass it through:
+#
+#     dokku config:set wotp-web NEXT_PUBLIC_APP_URL=https://otp.example.com
+#     dokku docker-options:add wotp-web build '--build-arg NEXT_PUBLIC_APP_URL'
+#
+# Dokku exports config values into the build environment, so the bare
+# `--build-arg NAME` form picks the value up. If a value is missing the build
+# FAILS rather than shipping a broken bundle: `next.config.ts` refuses to build
+# in production without NEXT_PUBLIC_APP_URL, and `lib/pb.ts` refuses without
+# NEXT_PUBLIC_PB_URL. That is deliberate — a dashboard whose canonical URLs say
+# localhost, or which cannot reach its own database, is worse than a red build.
+
+ARG NODE_VERSION=22-slim
+
+# ============================================
+# Stage 1: Install dependencies
+# ============================================
+FROM node:${NODE_VERSION} AS dependencies
+
+WORKDIR /app
+
+RUN npm install -g bun
+
+# Context is the repository root, hence the frontend/ prefixes.
+COPY frontend/package.json frontend/bun.lock* ./
+
+RUN --mount=type=cache,target=/root/.bun/install/cache \
+    bun install --no-save --frozen-lockfile
+
+# ============================================
+# Stage 2: Build the Next.js application
+# ============================================
+FROM node:${NODE_VERSION} AS builder
+
+WORKDIR /app
+
+COPY --from=dependencies /app/node_modules ./node_modules
+COPY frontend/ .
+
+ENV NODE_ENV=production
+ENV NEXT_TELEMETRY_DISABLED=1
+
+# Browser-reachable addresses only. `http://api:8000` resolves between
+# containers and would fail in every real browser.
+ARG NEXT_PUBLIC_PB_URL
+ARG NEXT_PUBLIC_PB_COLLECTIONS_PREFIX=waotp_
+ARG NEXT_PUBLIC_API_URL
+ARG NEXT_PUBLIC_APP_URL
+ARG NEXT_PUBLIC_GITHUB_REPO
+
+# Error reporting stays OFF unless you supply your own DSN, and then it reports
+# to your project — never to the authors'.
+ARG NEXT_PUBLIC_SENTRY_DISABLED=true
+ENV NEXT_PUBLIC_SENTRY_DISABLED=$NEXT_PUBLIC_SENTRY_DISABLED
+
+ENV NEXT_PUBLIC_PB_URL=$NEXT_PUBLIC_PB_URL
+ENV NEXT_PUBLIC_PB_COLLECTIONS_PREFIX=$NEXT_PUBLIC_PB_COLLECTIONS_PREFIX
+ENV NEXT_PUBLIC_API_URL=$NEXT_PUBLIC_API_URL
+ENV NEXT_PUBLIC_APP_URL=$NEXT_PUBLIC_APP_URL
+ENV NEXT_PUBLIC_GITHUB_REPO=$NEXT_PUBLIC_GITHUB_REPO
+
+# Emits .next/standalone, which is what stage 3 copies.
+ENV BUILD_STANDALONE=true
+
+RUN npm run build
+
+# ============================================
+# Stage 3: Production runner
+# ============================================
+FROM node:${NODE_VERSION} AS runner
+
+WORKDIR /app
+
+ENV NODE_ENV=production
+ENV PORT=3000
+ENV HOSTNAME=0.0.0.0
+ENV NEXT_TELEMETRY_DISABLED=1
+
+COPY --from=builder --chown=node:node /app/public ./public
+
+RUN mkdir .next && chown node:node .next
+
+COPY --from=builder --chown=node:node /app/.next/standalone ./
+COPY --from=builder --chown=node:node /app/.next/static ./.next/static
+
+USER node
+
+# 3000. Dokku detects this automatically via EXPOSE; no ports:add is needed.
+EXPOSE 3000
+
+CMD ["node", "server.js"]
