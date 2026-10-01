@@ -9,6 +9,7 @@ __pycache__/
 # creates first and the one most likely to hold a real token.
 .env*
 !.env.example
+!.env.production.example
 !.env.local.example
 
 # PocketBase runtime data (backups are non-negotiable — see PRD §10)

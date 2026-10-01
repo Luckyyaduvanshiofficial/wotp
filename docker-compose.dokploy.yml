@@ -1,0 +1,220 @@
+# =============================================================================
+# WOTP on Dokploy — production Compose deployment
+# =============================================================================
+#
+# This file is the one to point Dokploy at. In Dokploy create a project of type
+# **Compose** (not Application/Dockerfile) — WOTP is three services, and a single
+# Dockerfile can only ever build one of them.
+#
+#     Dokploy → Create Project → Compose
+#       Compose Path: docker-compose.dokploy.yml
+#       Environment:  paste the contents of .env.production
+#
+# Then add three domains, each pointing at a service and port:
+#
+#     web        → 3000    https://otp.example.com        (dashboard + landing)
+#     api        → 8000    https://api.otp.example.com    (the OTP API)
+#     pocketbase → 8090    https://pb.otp.example.com     (auth + admin UI)
+#
+# PocketBase needs a public domain because the DASHBOARD talks to it directly
+# from the browser (frontend/src/lib/pb.ts) to sign operators in. It is not only
+# an internal service. Keep it behind TLS and a strong superuser password; its
+# admin UI at /_/ can read every credential this app holds.
+#
+# -----------------------------------------------------------------------------
+# WHY THIS FILE EXISTS SEPARATELY FROM docker-compose.yml
+# -----------------------------------------------------------------------------
+# docker-compose.yml is the self-hosting file: it publishes every port on
+# 127.0.0.1 so that nothing is reachable until the operator puts a reverse proxy
+# in front, and it works with no external Docker network. This file is the
+# platform file: Dokploy's Traefik is the reverse proxy, it reaches containers
+# over the shared `dokploy-network`, and nothing is published to the host at all.
+#
+# Keep the two in step. The service names, the volume and the healthchecks are
+# meant to be identical; only the exposure and the environment differ.
+#
+# -----------------------------------------------------------------------------
+# BEFORE YOU DEPLOY
+# -----------------------------------------------------------------------------
+#   * APP_ENV=production makes the API REFUSE TO START unless SECRET_KEY,
+#     WOTP_FERNET_KEY, PB_SUPERUSER_PASSWORD and (when Meta credentials are set)
+#     META_APP_SECRET are configured. That is deliberate — a container that
+#     exits is easier to diagnose than one that quietly runs without webhook
+#     signature verification. Watch the deploy logs for the reason.
+#   * The NEXT_PUBLIC_* values below are BUILD arguments. They are compiled into
+#     the browser bundle, so changing one requires a REBUILD in Dokploy, not a
+#     restart. `docker compose restart` will not pick them up.
+#   * There is no public signup. Create your operator account after the first
+#     deploy with the command in docs/deploy-dokploy.md.
+
+name: wotp
+
+services:
+  # ---------------------------------------------------------------------------
+  # PocketBase — data store, auth source of truth, operator back office.
+  # ---------------------------------------------------------------------------
+  pocketbase:
+    build:
+      context: ./backend/pocketbase
+    restart: unless-stopped
+    environment:
+      # These two are read by the entrypoint, not by PocketBase itself. On a
+      # fresh volume it creates the superuser from them once and records that it
+      # did; on an existing volume they are ignored entirely, so changing them
+      # here will NOT change a superuser you later edited in the admin UI.
+      PB_SUPERUSER_EMAIL: ${PB_SUPERUSER_EMAIL:?set PB_SUPERUSER_EMAIL in the Dokploy environment}
+      PB_SUPERUSER_PASSWORD: ${PB_SUPERUSER_PASSWORD:?set PB_SUPERUSER_PASSWORD in the Dokploy environment}
+      PB_DATA_DIR: /pb/pb_data
+      # Physical table-name prefix. MUST match WOTP_PB_COLLECTIONS_PREFIX on the
+      # api service and NEXT_PUBLIC_PB_COLLECTIONS_PREFIX in the web build args,
+      # or the three services address different tables.
+      #
+      # Leave this alone on an install that already holds data: it is the literal
+      # name of the tables, not a label.
+      WOTP_PB_COLLECTIONS_PREFIX: ${WOTP_PB_COLLECTIONS_PREFIX:-waotp_}
+    volumes:
+      - pb_data:/pb/pb_data
+      # Read-only: migrations are part of the repo. A new deploy applies them on
+      # the next restart of this service.
+      - ./backend/pocketbase/pb_migrations:/pb/pb_migrations:ro
+    expose:
+      - '8090'
+    healthcheck:
+      test: ['CMD', 'wget', '-q', '-O', '/dev/null', 'http://127.0.0.1:8090/api/health']
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 20s
+    networks:
+      - dokploy-network
+
+  # ---------------------------------------------------------------------------
+  # API — the hot path. Owns all OTP, quota, throttle and provider logic.
+  # ---------------------------------------------------------------------------
+  api:
+    build:
+      context: ./backend
+    restart: unless-stopped
+    environment:
+      # --- Identity ----------------------------------------------------------
+      APP_ENV: production
+      APP_NAME: ${APP_NAME:-WOTP}
+      # Public URL of THIS API. Your Meta webhook URL is derived from it, so it
+      # must be the address Meta can reach — not an internal service name.
+      APP_URL: ${APP_URL:?set APP_URL to your public api URL, e.g. https://api.otp.example.com}
+
+      # --- Secrets -----------------------------------------------------------
+      SECRET_KEY: ${SECRET_KEY:?set SECRET_KEY in the Dokploy environment}
+      WOTP_FERNET_KEY: ${WOTP_FERNET_KEY:?set WOTP_FERNET_KEY in the Dokploy environment}
+      TELEGRAM_WEBHOOK_SECRET: ${TELEGRAM_WEBHOOK_SECRET:-}
+
+      # --- PocketBase --------------------------------------------------------
+      # Container-to-container address, never the public one: the API is a
+      # superuser client and does not leave the network to reach its own data.
+      PB_URL: http://pocketbase:8090
+      PB_SUPERUSER_EMAIL: ${PB_SUPERUSER_EMAIL:?set PB_SUPERUSER_EMAIL in the Dokploy environment}
+      PB_SUPERUSER_PASSWORD: ${PB_SUPERUSER_PASSWORD:?set PB_SUPERUSER_PASSWORD in the Dokploy environment}
+      WOTP_PB_COLLECTIONS_PREFIX: ${WOTP_PB_COLLECTIONS_PREFIX:-waotp_}
+
+      # --- Browser origin ----------------------------------------------------
+      # Must be the origin the dashboard is actually served from, or every
+      # dashboard request fails CORS and it presents as a dead backend.
+      DASHBOARD_ORIGIN: ${DASHBOARD_ORIGIN:?set DASHBOARD_ORIGIN to your public web URL}
+
+      # --- WhatsApp (Meta Cloud API) -----------------------------------------
+      WHATSAPP_PROVIDER: ${WHATSAPP_PROVIDER:-meta}
+      META_PHONE_NUMBER_ID: ${META_PHONE_NUMBER_ID:-}
+      META_WABA_ID: ${META_WABA_ID:-}
+      META_ACCESS_TOKEN: ${META_ACCESS_TOKEN:-}
+      META_TEMPLATE: ${META_TEMPLATE:-verification_code}
+      META_TEMPLATE_LANG: ${META_TEMPLATE_LANG:-en_US}
+      META_SANDBOX_TEMPLATE: ${META_SANDBOX_TEMPLATE:-}
+      META_VERIFY_TOKEN: ${META_VERIFY_TOKEN:-}
+      # Required once the credentials above are set: without it, inbound
+      # delivery callbacks cannot be signature-verified and anyone who learns
+      # the webhook URL could forge message statuses.
+      META_APP_SECRET: ${META_APP_SECRET:-}
+      META_GRAPH_VERSION: ${META_GRAPH_VERSION:-v21.0}
+      META_GRAPH_BASE_URL: ${META_GRAPH_BASE_URL:-https://graph.facebook.com}
+
+      # --- Telegram ----------------------------------------------------------
+      TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN:-}
+      TELEGRAM_BOT_USERNAME: ${TELEGRAM_BOT_USERNAME:-}
+
+      # --- OTP policy --------------------------------------------------------
+      OTP_LENGTH: ${OTP_LENGTH:-6}
+      DEFAULT_COUNTRY_CODE: ${DEFAULT_COUNTRY_CODE:-91}
+      CODE_TTL_SECONDS: ${CODE_TTL_SECONDS:-300}
+      MAX_ATTEMPTS: ${MAX_ATTEMPTS:-3}
+      MONTHLY_SEND_QUOTA: ${MONTHLY_SEND_QUOTA:-500}
+      PER_PHONE_HOURLY: ${PER_PHONE_HOURLY:-5}
+      RESEND_COOLDOWN_SECONDS: ${RESEND_COOLDOWN_SECONDS:-0}
+
+      # --- Abuse prevention --------------------------------------------------
+      RATE_LIMIT_ENABLED: ${RATE_LIMIT_ENABLED:-1}
+      RATELIMIT_PER_MIN: ${RATELIMIT_PER_MIN:-10}
+      RATELIMIT_PER_IP_PER_MIN: ${RATELIMIT_PER_IP_PER_MIN:-30}
+      # 1 is correct HERE and 0 is correct in plain compose. Dokploy terminates
+      # TLS at Traefik, which sets X-Forwarded-For; without this every request
+      # looks like it came from the proxy and the per-IP limiter becomes one
+      # shared bucket for the whole internet.
+      TRUST_PROXY_HEADERS: '1'
+
+      # --- Delivery ----------------------------------------------------------
+      # MUST be 0 in production. The API itself refuses to boot with this on,
+      # because mock delivery reports success without sending anything.
+      WOTP_MOCK_DELIVERY: '0'
+    expose:
+      - '8000'
+    depends_on:
+      pocketbase:
+        condition: service_healthy
+    healthcheck:
+      test: ['CMD', 'curl', '-fsS', 'http://127.0.0.1:8000/health']
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 20s
+    networks:
+      - dokploy-network
+
+  # ---------------------------------------------------------------------------
+  # Web — operator dashboard and the public landing page.
+  # ---------------------------------------------------------------------------
+  web:
+    build:
+      context: ./frontend
+      args:
+        # BROWSER-REACHABLE addresses. `http://api:8000` would resolve only
+        # between containers and fail in every real browser. These are inlined
+        # at build time — changing them needs a rebuild, not a restart.
+        NEXT_PUBLIC_APP_URL: ${NEXT_PUBLIC_APP_URL:?set NEXT_PUBLIC_APP_URL to your public web URL}
+        NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:?set NEXT_PUBLIC_API_URL to your public api URL}
+        NEXT_PUBLIC_PB_URL: ${NEXT_PUBLIC_PB_URL:?set NEXT_PUBLIC_PB_URL to your public PocketBase URL}
+        # Must match WOTP_PB_COLLECTIONS_PREFIX above.
+        NEXT_PUBLIC_PB_COLLECTIONS_PREFIX: ${WOTP_PB_COLLECTIONS_PREFIX:-waotp_}
+        # Optional: renders a GitHub link and star count when set (owner/repo).
+        NEXT_PUBLIC_GITHUB_REPO: ${NEXT_PUBLIC_GITHUB_REPO:-}
+        # Error reporting stays off unless YOU supply a DSN. Nothing is ever
+        # reported to the authors.
+        NEXT_PUBLIC_SENTRY_DISABLED: ${NEXT_PUBLIC_SENTRY_DISABLED:-true}
+    restart: unless-stopped
+    expose:
+      - '3000'
+    depends_on:
+      - api
+    networks:
+      - dokploy-network
+
+volumes:
+  # Dokploy preserves named volumes across redeploys. This one holds every
+  # collection, operator account, API key and audit row — back it up before
+  # major upgrades (docs/self-hosting.md → Backups).
+  pb_data:
+    driver: local
+
+networks:
+  # Created by Dokploy and shared with its Traefik instance. Declared external
+  # because this file must never create or own it.
+  dokploy-network:
+    external: true

@@ -8,6 +8,12 @@ private OTP gateway and a public one.
 Prerequisites: a machine that stays on, Docker with the Compose plugin, and a
 domain you control if you want HTTPS. No Postgres, no Redis, no object storage.
 
+> **Using Dokploy?** Read [deploy-dokploy.md](./deploy-dokploy.md) instead. It
+> uses [`docker-compose.dokploy.yml`](../docker-compose.dokploy.yml), which
+> routes through Traefik over the shared `dokploy-network` rather than binding
+> loopback ports for you to proxy by hand. This document still applies for
+> backups, retention and upgrades.
+
 ---
 
 ## The three services

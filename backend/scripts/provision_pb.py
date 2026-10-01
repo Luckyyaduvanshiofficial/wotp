@@ -2,7 +2,7 @@
 """Idempotent provisioning of the wotp collections on a (possibly shared)
 self-hosted PocketBase instance, via the superuser REST API.
 
-Mirrors backend/pocketbase/pb_migrations/1757750400_init_wotp.pb.js 1:1, but
+Mirrors backend/pocketbase/pb_migrations/1757750400_init_waotp.pb.js 1:1, but
 every wotp collection is created under `--prefix` (default "waotp_") so it
 can coexist with other projects' collections on the same PB instance.
 
