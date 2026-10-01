@@ -816,7 +816,10 @@
 }
 
 .lm-stat__fig {
-  font-family: var(--font-display);
+  /* The one place the pixel face belongs: big figures read as instrument
+     output rather than as typography, which is what they are. */
+  font-family: var(--font-pixel);
+  font-feature-settings: normal;
   font-weight: 400;
   font-style: normal;
   font-size: var(--text-3xl);

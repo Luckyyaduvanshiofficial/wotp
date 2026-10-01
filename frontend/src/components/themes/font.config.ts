@@ -17,8 +17,44 @@ import {
   Source_Code_Pro,
   Space_Mono
 } from 'next/font/google';
+import localFont from 'next/font/local';
 
 import { cn } from '@/lib/utils';
+
+/**
+ * Geist Pixel — the instrument face, used for large figures.
+ *
+ * Geist Pixel carries a single custom axis, `ELSH` (0–100), which changes the
+ * SHAPE of the pixel elements rather than weight or width. Its six named stops
+ * are Regular 0, Square 1, Circle 20, Grid 40, Triangle 60, Line 80.
+ *
+ * This file is a STATIC SUBSET at ELSH=20 (Circle), cut down to the 20 glyphs
+ * the design actually sets in it — the digit figures and their punctuation.
+ * That takes it from 3.49 MB to 83 KB, which matters because the font is
+ * decoration: shipping the full variable font for three numbers would have
+ * nearly doubled the site's page weight and cost real Core Web Vitals.
+ *
+ * To use a different stop, regenerate the subset from the original download
+ * (see the note in src/fonts/):
+ *
+ *   python -m fontTools.varLib.instancer \
+ *     GeistPixel-Regular-VariableFont_ELSH.ttf ELSH=40 -o static.ttf
+ *   python -m fontTools.subset static.ttf \
+ *     --text="0123456789.,%+-—·/ " --layout-features='' --no-hinting \
+ *     --name-IDs=1,2,3,4,6 --drop-tables+=GSUB,GPOS,GDEF,meta \
+ *     --output-file=src/fonts/GeistPixel-Grid.ttf
+ *
+ * Licensed under the SIL Open Font License; see src/fonts/OFL.txt.
+ */
+const fontGeistPixel = localFont({
+  src: '../../fonts/GeistPixel-Circle.ttf',
+  display: 'swap',
+  // Decorative, and only used below the fold on one page: never block a render
+  // on it. The fallback shows digits immediately and the face swaps in.
+  preload: false,
+  variable: '--font-geist-pixel',
+  fallback: ['ui-monospace', 'monospace']
+});
 
 const fontSans = Geist({
   subsets: ['latin'],
@@ -148,6 +184,7 @@ export const fontVariables = cn(
   fontSourceCodePro.variable,
   fontInstrument.variable,
   fontInstrumentSerif.variable,
+  fontGeistPixel.variable,
   fontNotoMono.variable,
   fontMullish.variable,
   fontInter.variable,

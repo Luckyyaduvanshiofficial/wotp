@@ -41,11 +41,11 @@ graphify-out/
 .zcode/
 .v2c/
 
-# Loose font bundles downloaded into the repository root. The app's fonts come
-# from next/font/google via frontend/src/components/themes/font.config.ts, so a
-# dropped-in font here is unreferenced and would add megabytes to the history
-# for nothing. To actually use one, put it under frontend/public/fonts/ and
-# reference it from font.config.ts — then track it deliberately.
+# Loose font downloads dropped into the repository root. Fonts the design
+# actually uses live in frontend/src/fonts/ and are tracked there; a bundle
+# sitting in the root is unreferenced and would add megabytes to the history
+# for nothing. Extract it somewhere else, or move the specific file into
+# frontend/src/fonts/ and wire it up in font.config.ts.
 /GeistPixel-*.ttf
 /OFL.txt
 /README.txt

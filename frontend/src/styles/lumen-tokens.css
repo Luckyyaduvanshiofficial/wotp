@@ -41,6 +41,13 @@
   --font-display: var(--font-instrument-serif), Georgia, 'Times New Roman', serif;
   --font-body: var(--font-sans), ui-sans-serif, system-ui, sans-serif;
   --font-label: var(--font-jetbrains-mono), ui-monospace, 'SFMono-Regular', monospace;
+  /*
+   * The instrument face. Reserved for large FIGURES (the stat blocks), never
+   * for prose, labels or code: Geist Pixel is a dot-matrix display face, so it
+   * is legible at display size and mush below it. The digits it ships with are
+   * cut down to exactly what the design sets in it — see font.config.ts.
+   */
+  --font-pixel: var(--font-geist-pixel), ui-monospace, 'SFMono-Regular', monospace;
 
   --text-xs: 0.6875rem; /* mono labels */
   --text-sm: 0.8125rem;
