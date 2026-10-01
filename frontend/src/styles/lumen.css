@@ -320,12 +320,20 @@
 }
 
 .lm-display {
-  font-family: var(--font-display);
+  /*
+   * The pixel face sets headlines; body copy stays in Geist, because a
+   * dot-matrix face at 14–16px is genuinely hard to read across long paragraphs
+   * and the docs pages are long.
+   *
+   * Tracking is normal here rather than tightened: the negative tracking this
+   * rule used to carry suits a text serif and collides pixel glyphs.
+   */
+  font-family: var(--font-pixel);
   font-weight: 400;
   font-style: normal;
   font-size: var(--text-display);
   line-height: var(--lh-display);
-  letter-spacing: -0.02em;
+  letter-spacing: 0;
   color: var(--color-ink);
   margin: 0;
   max-width: 22ch;
@@ -608,12 +616,13 @@
 }
 
 .lm-h2 {
-  font-family: var(--font-display);
+  /* Pixel, matching .lm-display — tracking normal for the same reason. */
+  font-family: var(--font-pixel);
   font-weight: 400;
   font-style: normal;
   font-size: var(--text-2xl);
   line-height: var(--lh-tight);
-  letter-spacing: -0.01em;
+  letter-spacing: 0;
   color: var(--color-ink);
   margin: 0;
   max-width: 34ch;

@@ -31,7 +31,7 @@ const RELEASES: {
   {
     version: 'unreleased',
     date: 'on main',
-    title: 'Deployment paths for platforms that build one container at a time',
+    title: 'Deployment paths, and headlines in the instrument face',
     groups: [
       {
         heading: 'Deployment',
@@ -39,6 +39,14 @@ const RELEASES: {
           'Dokploy: a Compose file that joins the platform network so Traefik routes to it, publishes nothing to the host, and names every environment variable instead of relying on an env file the platform never provides.',
           'Dokku: a dashboard image built against the repository root, because Dokku always uses the root as its build context and a Dockerfile written for a subdirectory cannot work there.',
           'Both paths are documented end to end, including the build-time variables that Next.js compiles into the browser bundle and which therefore need a rebuild rather than a restart.'
+        ]
+      },
+      {
+        heading: 'Typography',
+        items: [
+          'Headlines are now set in Geist Pixel. Body copy deliberately stays in Geist, because a dot-matrix face at 14-16px is hard to read across the long docs and legal pages.',
+          'The face ships as a WOFF2 holding the full character set at 13.7 KB, replacing an 82.5 KB file that contained only digits and punctuation and could not set a single word.',
+          'Letter spacing on headlines went from negative to normal, since the tightening suited a text serif and collided the pixel glyphs.'
         ]
       }
     ]

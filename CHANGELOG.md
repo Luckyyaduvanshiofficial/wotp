@@ -18,8 +18,8 @@ as a series of releases that never existed.
 
 ## [Unreleased]
 
-Deployment paths added after the `0.1.0` tag. No runtime behaviour changed, so
-these are safe on an installation already serving traffic.
+Changes made after the `0.1.0` tag. The deployment paths are safe on an
+installation already serving traffic; the typography change is visual only.
 
 ### Added
 
@@ -31,6 +31,23 @@ these are safe on an installation already serving traffic.
 - **Dokku deployment path** — `Dockerfile.web` builds the dashboard against the
   repository root, which is the build context Dokku always uses. See
   [docs/deploy-dokku.md](docs/deploy-dokku.md).
+- **`CHANGELOG.md` and `memory.md`.** This file is the canonical history;
+  `memory.md` is the agent-facing "where are we now" note and cites this one
+  rather than restating it.
+
+### Changed
+
+- **Headlines are set in Geist Pixel.** `.lm-display` and `.lm-h2` now use the
+  instrument face; body copy deliberately stays in Geist, because a dot-matrix
+  face at 14–16px is hard to read across the long docs and legal pages. Tracking
+  on both rules went from negative to normal — the tightening suited a text
+  serif and collided the pixel glyphs.
+- **The pixel font is now a WOFF2 with a full character set, and is smaller for
+  it.** It previously shipped as an 82.5 KB TTF subset to 19 glyphs — digits and
+  punctuation only — which meant it *could not set a single word*. Uncompressed,
+  the text range is 478 KB, which is what justified that restriction; compressed
+  as WOFF2 the full 199-glyph set is **13.7 KB**. Shipping the compressed form
+  gives more glyphs in 17% of the bytes. Regenerate as a WOFF2, never a TTF.
 
 ### Fixed
 
@@ -39,6 +56,9 @@ these are safe on an installation already serving traffic.
   frontend sources to copy; and bare `node_modules/`, `.next/` and `.venv/`
   patterns excluded only the root instances, leaving `frontend/node_modules`
   (1.3 GB) inside the context. Patterns are now `**/`-prefixed.
+- **The public changelog page no longer invents releases.** It carried `0.2.0`
+  and `0.3.0` entries dated months before the first commit, and claimed 87 tests
+  where there are 159. It now mirrors this file.
 - **Retention pruning is reachable from the CLI** and reports what it would delete
   under `--dry-run` before it deletes anything.
 

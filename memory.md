@@ -118,6 +118,16 @@ None of these is a code defect. All three are configuration on the deployment.
 - **`WAOTP_*` still works.** The rename to WOTP deliberately left the old
   environment variable names and the collection prefix default alone, so
   pre-rename installs keep running. Do not "clean up" the aliases.
+- **Fonts ship as WOFF2, never TTF.** This one already caused a wrong decision: the
+  pixel face was cut down to 19 glyphs — digits and punctuation, no letters at all
+  — because the uncompressed text range is 478 KB. As WOFF2 the *full* 199-glyph
+  set is **13.7 KB**, smaller than the 82.5 KB digits-only TTF it replaced. A
+  factor of roughly thirty. Before restricting a font for size, compress it.
+- **`next dev` rewrites `frontend/tsconfig.json`** on startup — it re-serialises the
+  JSON into an expanded form and adds a `.next/dev/dev/types/**/*.ts` include. Both
+  changes then fail `format:check`. Revert the file with
+  `git checkout -- frontend/tsconfig.json` rather than committing it; this is not a
+  change anyone made on purpose.
 - **Never rewrite published history** (`AGENTS.md`). A real Meta phone number id
   is in published history; it is an identifier, not a credential, and it stays.
 
