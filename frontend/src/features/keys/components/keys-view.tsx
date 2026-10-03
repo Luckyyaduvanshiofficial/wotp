@@ -16,6 +16,7 @@ import {
 } from '@/lib/api';
 import { stashPlaintextKey } from '@/lib/key-handoff';
 import { KeyReveal } from '@/features/keys/components/key-reveal';
+import { AgentPromptCard } from '@/features/keys/components/agent-prompt-card';
 import { Icons } from '@/components/icons';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -129,12 +130,15 @@ export function KeysView() {
   return (
     <div className='grid gap-4'>
       {revealed && (
-        <KeyReveal
-          apiKey={revealed.api_key}
-          last4={revealed.last4}
-          label={revealed.label}
-          onDone={() => setRevealed(null)}
-        />
+        <>
+          <KeyReveal
+            apiKey={revealed.api_key}
+            last4={revealed.last4}
+            label={revealed.label}
+            onDone={() => setRevealed(null)}
+          />
+          <AgentPromptCard apiKey={revealed.api_key} />
+        </>
       )}
 
       <Card>

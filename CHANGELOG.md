@@ -34,6 +34,13 @@ installation already serving traffic; the typography change is visual only.
 - **`CHANGELOG.md` and `memory.md`.** This file is the canonical history;
   `memory.md` is the agent-facing "where are we now" note and cites this one
   rather than restating it.
+- **One-paste agent setup.** Creating an API key now also offers the whole
+  integration contract as a single prompt with the gateway URL and the key
+  already filled in, so a coding agent can build the integration without asking
+  the user for anything. The briefing text is fetched from
+  `/agent-briefing.md` rather than copied into the frontend, so the prompt can
+  never carry a stale version of the contract. It has to appear at the reveal
+  moment, because the plaintext key is unrecoverable afterwards by design.
 
 ### Changed
 

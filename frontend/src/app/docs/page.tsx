@@ -127,6 +127,12 @@ export default function DocsHubPage() {
         It is generated from the same facts as the <Link href='/docs/api'>API reference</Link>, so
         the two cannot drift. Copy it, or point your agent at <code>{BRIEFING_PATH}</code> directly.
       </p>
+      <p>
+        The briefing below asks the agent to request your base URL and API key, because a file read
+        off the public site cannot know either. If you have just created a key, the dashboard offers
+        the same briefing with both values already filled in — nothing left for the agent to ask
+        you.
+      </p>
       <div className='lm-actions'>
         <CopyButton value={briefing} label='copy for agent' className='lm-copy lm-copy--primary' />
         <a href={BRIEFING_PATH} className='lm-actions__ghost'>
